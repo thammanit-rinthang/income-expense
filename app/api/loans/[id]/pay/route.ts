@@ -10,9 +10,10 @@ const paymentSchema = z.object({
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const loanId = parseInt(params.id);
+  const { id } = await params;
+  const loanId = parseInt(id);
 
   try {
     const body = await request.json();
@@ -46,7 +47,7 @@ export async function POST(
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return NextResponse.json({ error: error }, { status: 400 });
     }
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
