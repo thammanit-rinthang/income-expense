@@ -1,5 +1,5 @@
 import prisma from "./prisma";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@/app/generated/prisma/client";
 
 /**
  * Calculates the remaining spending pool for a monthly budget.
