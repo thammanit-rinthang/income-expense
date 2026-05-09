@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import dayjs from "dayjs";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@/app/generated/prisma/client";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
