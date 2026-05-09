@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+ output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model BudgetCategory {
+  id Int @id @default(autoincrement())
+
+  budget_id Int
+
+  budget MonthlyBudget @relation(fields: [budget_id], references: [id], onDelete: Cascade)
+
+  name String
+
+  monthly_budget Decimal?
+
+  transactions Transaction[]
+
+  @@index([budget_id])
+  @@map("categories")
+}
+
+model MonthlyBudget {
+  id Int @id @default(autoincrement())
+
+  person_name String
+
+  month_year DateTime @db.Date
+
+  total_income Decimal
+
+  remaining_spending_pool Decimal
+
+  fixed_costs FixedCost[]
+
+  categories BudgetCategory[]
+
+  transactions Transaction[]
+
+  loan_payments LoanPayment[]
+
+  card_payments CardPayment[]
+
+  loans Loan[]
+
+  @@map("monthly_budgets")
+}
+
+model FixedCost {
+  id Int @id @default(autoincrement())
+
+  budget_id Int
+
+  budget MonthlyBudget @relation(fields: [budget_id], references: [id], onDelete: Cascade)
+
+  name String
+
+  amount Decimal
+
+  is_paid Boolean @default(false)
+
+  @@index([budget_id])
+  @@map("fixed_costs")
+}
+
+model Transaction {
+  id Int @id @default(autoincrement())
+
+  category_id Int?
+
+  category BudgetCategory? @relation(fields: [category_id], references: [id], onDelete: SetNull)
+
+  budget_id Int?
+
+  budget MonthlyBudget? @relation(fields: [budget_id], references: [id], onDelete: SetNull)
+
+  card_id Int?
+
+  card CreditCard? @relation(fields: [card_id], references: [id], onDelete: SetNull)
+
+  amount Decimal
+
+  description String
+
+  created_at DateTime @default(now())
+
+  @@index([budget_id])
+  @@index([category_id])
+  @@index([created_at])
+  @@map("transactions")
+}
+
+model Loan {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  person_name String?
+
+  budget_id Int?
+
+  budget MonthlyBudget? @relation(fields: [budget_id], references: [id], onDelete: SetNull)
+
+  principal Decimal
+
+  interest_rate Decimal
+
+  term_months Int
+
+  start_date DateTime @db.Date
+
+  is_paid Boolean @default(false)
+
+  created_at DateTime @default(now())
+
+  payments LoanPayment[]
+
+  @@index([budget_id])
+  @@map("loans")
+}
+
+model LoanPayment {
+  id Int @id @default(autoincrement())
+
+  loan_id Int
+
+  loan Loan @relation(fields: [loan_id], references: [id], onDelete: Cascade)
+
+  budget_id Int
+
+  budget MonthlyBudget @relation(fields: [budget_id], references: [id], onDelete: Cascade)
+
+  amount Decimal
+
+  note String @default("")
+
+  paid_at DateTime @default(now())
+
+  @@index([loan_id])
+  @@index([budget_id])
+  @@map("loan_payments")
+}
+
+model CreditCard {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  person_name String?
+
+  credit_limit Decimal
+
+  statement_balance Decimal @default(0)
+
+  minimum_payment Decimal @default(0)
+
+  due_date DateTime? @db.Date
+
+  payments CardPayment[]
+
+  transactions Transaction[]
+
+  @@map("credit_cards")
+}
+
+model CardPayment {
+  id Int @id @default(autoincrement())
+
+  card_id Int
+
+  card CreditCard @relation(fields: [card_id], references: [id], onDelete: Cascade)
+
+  budget_id Int?
+
+  budget MonthlyBudget? @relation(fields: [budget_id], references: [id], onDelete: SetNull)
+
+  transaction_id Int?
+
+  amount Decimal
+
+  note String @default("")
+
+  paid_at DateTime @default(now())
+
+  @@index([card_id])
+  @@index([budget_id])
+  @@map("card_payments")
+}
+
+model MonthlySummary {
+  id Int @id @default(autoincrement())
+
+  month_year DateTime @db.Date
+
+  combined_income Decimal
+
+  combined_spent Decimal
+
+  combined_fixed Decimal
+
+  person_a_spent Decimal?
+
+  person_b_spent Decimal?
+
+  created_at DateTime @default(now())
+
+  @@map("monthly_summaries")
+}

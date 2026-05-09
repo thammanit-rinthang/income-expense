@@ -1,65 +1,178 @@
-import Image from "next/image";
+"use client";
+
+import Header from "@/components/ui/Header";
+import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
+import RecentTransactions from "@/components/transactions/RecentTransactions";
+import CombinedDashboard from "@/components/summary/CombinedDashboard";
+import { useUIStore } from "@/store/uiStore";
+import { formatCurrency } from "@/lib/utils";
+import { useState } from "react";
+import BudgetEditSheet from "@/components/budget/BudgetEditSheet";
+import { Settings2, AlertCircle, Circle } from "lucide-react";
+import { useFixedCosts, useToggleFixedCost } from "@/hooks/useFixedCosts";
+import { useCategories } from "@/hooks/useCategories";
+import CategoryItem from "@/components/categories/CategoryItem";
+import toast from "react-hot-toast";
+import Link from "next/link";
 
 export default function Home() {
+  const { data: budget, isLoading } = useMonthlyBudget();
+  const { dashboardView } = useUIStore();
+  const [isBudgetEditOpen, setIsBudgetEditOpen] = useState(false);
+  
+  const { data: fixedCosts } = useFixedCosts(budget?.id || null);
+  const { data: categories } = useCategories(budget?.id || null);
+  const { mutate: toggleFixedCost, isPending: isToggling } = useToggleFixedCost();
+
+  const unpaidFixedCosts = fixedCosts?.filter(f => !f.is_paid) || [];
+  const allocatedCategories = categories?.filter(c => c.monthly_budget && Number(c.monthly_budget) > 0) || [];
+
+  const handleToggleFixedCost = (id: number, is_paid: boolean) => {
+    toggleFixedCost({ id, is_paid }, {
+      onSuccess: () => toast.success(is_paid ? "จ่ายแล้ว!" : "ยกเลิกการจ่าย"),
+    });
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="flex flex-col min-h-screen bg-base-200">
+      <Header />
+      
+      <div className="flex-1 px-4 pt-6 pb-24 space-y-5">
+        {dashboardView === "personal" ? (
+          <>
+            {/* Remaining Pool Summary Card */}
+            <section className="bg-primary p-6 rounded-xl relative overflow-hidden text-primary-content">
+              <div className="relative z-10">
+                <div className="flex justify-between items-start mb-2">
+                  <p className="text-sm font-medium opacity-80">เงินคงเหลือ</p>
+                  <button 
+                    onClick={() => setIsBudgetEditOpen(true)}
+                    className="p-2 hover:bg-white/10 rounded-full text-white/50 transition-colors -mr-2 -mt-2"
+                  >
+                    <Settings2 size={18} />
+                  </button>
+                </div>
+                
+                <h2 className="text-4xl font-bold tracking-tight mb-6">
+                  {isLoading ? "..." : formatCurrency(budget?.remaining_spending_pool || 0)}
+                </h2>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-white/10 backdrop-blur-md p-2 rounded-xl border border-white/10">
+                    <p className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1">รายรับ</p>
+                    <p className="text-lg font-bold">
+                      {isLoading ? "..." : formatCurrency(budget?.total_income || 0)}
+                    </p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-md p-2 rounded-xl border border-white/10">
+                    <p className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1">ใช้ไปแล้ว</p>
+                    <p className="text-lg font-bold">
+                      {isLoading ? "..." : formatCurrency((Number(budget?.total_income) || 0) - (Number(budget?.remaining_spending_pool) || 0))}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Unpaid Fixed Costs */}
+            {unpaidFixedCosts.length > 0 && (
+              <section className="space-y-2.5">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-sm font-bold text-base-content/40">รายจ่ายคงที่</h3>
+                </div>
+                <div className="grid gap-2">
+                  {unpaidFixedCosts.map((fixed) => (
+                    <div 
+                      key={fixed.id} 
+                      className="bg-base-100 p-2 rounded-xl border-[0.5px] border-base-300 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => !isToggling && handleToggleFixedCost(fixed.id, true)}
+                          disabled={isToggling}
+                          className={`transition-colors ${isToggling ? "text-base-200 cursor-not-allowed" : "text-base-300 hover:text-primary"}`}
+                        >
+                          <Circle size={24} />
+                        </button>
+                        <div>
+                          <p className="font-bold text-base-content">{fixed.name}</p>
+                          <p className="text-[10px] font-black text-primary uppercase">
+                            {formatCurrency(fixed.amount)}
+                          </p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => !isToggling && handleToggleFixedCost(fixed.id, true)}
+                        disabled={isToggling}
+                        className="btn btn-xs btn-primary rounded-full px-3 disabled:bg-primary/50"
+                      >
+                        {isToggling ? <span className="loading loading-spinner loading-xs"></span> : "จ่ายเลย"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Category Progress */}
+            {allocatedCategories.length > 0 && (
+              <section className="space-y-2.5">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-sm font-bold text-base-content/40">งบประมาณรายหมวดหมู่</h3>
+                  <span className="text-[10px] font-black text-base-content/40 uppercase tracking-wider">
+                    {allocatedCategories.length} หมวดหมู่
+                  </span>
+                </div>
+                <div className="grid gap-2">
+                  {allocatedCategories.map((category) => (
+                    <CategoryItem
+                      key={category.id}
+                      name={category.name}
+                      spent={category.spent || 0}
+                      budget={category.monthly_budget}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-base-100 p-5 rounded-xl border-[0.5px] border-base-300">
+                <p className="text-[10px] text-base-content/40 font-bold uppercase tracking-wider mb-1">รายได้ทั้งหมด</p>
+                <p className="text-xl font-black text-success">
+                  {isLoading ? "..." : formatCurrency(budget?.total_income || 0)}
+                </p>
+              </div>
+              <div className="bg-base-100 p-5 rounded-xl border-[0.5px] border-base-300">
+                <p className="text-[10px] text-base-content/40 font-bold uppercase tracking-wider mb-1">จ่ายไปแล้ว (เงินสด)</p>
+                <p className="text-xl font-black text-error">
+                  {isLoading ? "..." : formatCurrency((Number(budget?.total_income) || 0) - (Number(budget?.remaining_spending_pool) || 0))}
+                </p>
+              </div>
+            </div>
+
+            {/* Recent Transactions Section */}
+            <div className="space-y-4 pb-12">
+              <div className="flex justify-between items-center px-1">
+                <h3 className="text-sm font-bold text-base-content/40">รายการล่าสุด</h3>
+                <Link href="/transactions" className="text-xs font-bold text-primary px-2 py-1 hover:bg-primary/5 rounded-lg transition-colors">
+                  ดูทั้งหมด
+                </Link>
+              </div>
+              
+              {budget && <RecentTransactions budgetId={budget.id} />}
+            </div>
+          </>
+        ) : (
+          <CombinedDashboard />
+        )}
+      </div>
+      <BudgetEditSheet 
+        isOpen={isBudgetEditOpen} 
+        onClose={() => setIsBudgetEditOpen(false)} 
+        budget={budget || null}
+      />
     </div>
   );
 }
