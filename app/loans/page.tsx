@@ -4,19 +4,41 @@ import { useState } from "react";
 import Header from "@/components/ui/Header";
 import { useUserStore } from "@/store/userStore";
 import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
-import { useLoans } from "@/hooks/useLoans";
+import { useLoans, useDeleteLoan } from "@/hooks/useLoans";
 import LoanItem from "@/components/loans/LoanItem";
 import LoanSheet from "@/components/loans/LoanSheet";
 import PayLoanSheet from "@/components/loans/PayLoanSheet";
 import { Plus, PiggyBank } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 export default function LoansPage() {
   const { currentUser } = useUserStore();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [payLoan, setPayLoan] = useState<any>(null);
+  const [selectedLoan, setSelectedLoan] = useState<any>(null);
 
   const { data: budget } = useMonthlyBudget();
   const { data: loans, isLoading } = useLoans(currentUser);
+  const deleteLoan = useDeleteLoan();
+
+  const handleEdit = (loan: any) => {
+    setSelectedLoan(loan);
+    setIsAddOpen(true);
+  };
+
+  const handleDelete = (id: number) => {
+    if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้?")) {
+      deleteLoan.mutate(id, {
+        onSuccess: () => toast.success("ลบรายการสำเร็จ"),
+        onError: () => toast.error("ลบรายการล้มเหลว"),
+      });
+    }
+  };
+
+  const handleCloseSheet = () => {
+    setIsAddOpen(false);
+    setSelectedLoan(null);
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50/50">
@@ -45,8 +67,13 @@ export default function LoansPage() {
                 key={loan.id}
                 name={loan.name}
                 principal={Number(loan.principal)}
+                interestRate={Number(loan.interest_rate)}
+                termMonths={loan.term_months}
+                startDate={loan.start_date}
                 paid={loan.payments.reduce((acc, p) => acc + Number(p.amount), 0)}
                 onPay={() => setPayLoan(loan)}
+                onEdit={() => handleEdit(loan)}
+                onDelete={() => handleDelete(loan.id)}
               />
             ))}
             {loans?.length === 0 && (
@@ -61,8 +88,9 @@ export default function LoansPage() {
 
       <LoanSheet
         isOpen={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
+        onClose={handleCloseSheet}
         budgetId={budget?.id}
+        loan={selectedLoan}
       />
 
       {budget && (

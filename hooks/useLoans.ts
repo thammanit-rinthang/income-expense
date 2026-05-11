@@ -10,6 +10,9 @@ export interface Loan {
   interest_rate: number;
   term_months: number;
   is_paid: boolean;
+  include_in_income: boolean;
+  budget_id?: number;
+  start_date: string | Date;
   payments: Array<{ amount: number }>;
 }
 
@@ -29,6 +32,35 @@ export function useCreateLoan() {
     mutationFn: async (loan: any) => {
       const { data } = await axios.post("/api/loans", loan);
       return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-budget"] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-summary"] });
+    },
+  });
+}
+
+export function useUpdateLoan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...loan }: any) => {
+      const { data } = await axios.patch(`/api/loans/${id}`, loan);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-budget"] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-summary"] });
+    },
+  });
+}
+
+export function useDeleteLoan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await axios.delete(`/api/loans/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loans"] });

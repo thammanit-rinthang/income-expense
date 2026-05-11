@@ -45,6 +45,7 @@ export async function POST(request: Request) {
           interest_rate: validatedData.interest_rate,
           term_months: validatedData.term_months,
           start_date: new Date(),
+          include_in_income: validatedData.include_in_income,
         },
       });
 

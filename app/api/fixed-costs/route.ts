@@ -26,13 +26,27 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { budget_id, name, amount, is_paid } = body;
 
-    const fixedCost = await prisma.fixedCost.create({
-      data: {
-        budget_id: parseInt(budget_id),
-        name,
-        amount: parseFloat(amount),
-        is_paid: is_paid || false,
-      },
+    const fixedCost = await prisma.$transaction(async (tx) => {
+      const fc = await tx.fixedCost.create({
+        data: {
+          budget_id: parseInt(budget_id),
+          name,
+          amount: parseFloat(amount),
+          is_paid: is_paid || false,
+        },
+      });
+
+      if (fc.is_paid) {
+        await tx.monthlyBudget.update({
+          where: { id: fc.budget_id },
+          data: {
+            total_income: { decrement: fc.amount },
+            remaining_spending_pool: { decrement: fc.amount },
+          },
+        });
+      }
+
+      return fc;
     });
 
     return NextResponse.json(fixedCost);
@@ -73,6 +87,9 @@ export async function PATCH(request: Request) {
         await tx.monthlyBudget.update({
           where: { id: updatedFixedCost.budget_id },
           data: {
+            total_income: {
+              [is_paid ? "decrement" : "increment"]: amountToUpdate,
+            },
             remaining_spending_pool: {
               [is_paid ? "decrement" : "increment"]: amountToUpdate,
             },
@@ -113,6 +130,9 @@ export async function DELETE(request: Request) {
         await tx.monthlyBudget.update({
           where: { id: fixedCost.budget_id },
           data: {
+            total_income: {
+              increment: fixedCost.amount,
+            },
             remaining_spending_pool: {
               increment: fixedCost.amount,
             },

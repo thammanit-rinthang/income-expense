@@ -4,10 +4,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import BottomSheet from "@/components/ui/BottomSheet";
-import { useCreateLoan } from "@/hooks/useLoans";
+import { useCreateLoan, useUpdateLoan, Loan } from "@/hooks/useLoans";
 import { useUserStore } from "@/store/userStore";
 import { toast } from "react-hot-toast";
-import { cn } from "@/lib/utils";
+import { cn, calculateMonthlyPayment, formatCurrency } from "@/lib/utils";
+import { useEffect } from "react";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -29,13 +30,17 @@ interface LoanSheetProps {
   isOpen: boolean;
   onClose: () => void;
   budgetId?: number;
+  loan?: Loan | null;
 }
 
-export default function LoanSheet({ isOpen, onClose, budgetId }: LoanSheetProps) {
+export default function LoanSheet({ isOpen, onClose, budgetId, loan }: LoanSheetProps) {
   const { currentUser } = useUserStore();
   const createLoan = useCreateLoan();
+  const updateLoan = useUpdateLoan();
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormInput>({
+  const isEditing = !!loan;
+
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<FormInput>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: "",
@@ -46,30 +51,75 @@ export default function LoanSheet({ isOpen, onClose, budgetId }: LoanSheetProps)
     }
   });
 
+  const watchedPrincipal = watch("principal");
+  const watchedInterest = watch("interest_rate");
+  const watchedTerms = watch("term_months");
+
+  const previewMonthly = calculateMonthlyPayment(
+    Number(watchedPrincipal) || 0,
+    Number(watchedInterest) || 0,
+    Number(watchedTerms) || 1
+  );
+
+  useEffect(() => {
+    if (loan) {
+      reset({
+        name: loan.name,
+        principal: String(loan.principal),
+        interest_rate: String(loan.interest_rate),
+        term_months: String(loan.term_months),
+        include_in_income: loan.include_in_income,
+      });
+    } else {
+      reset({
+        name: "",
+        principal: "",
+        interest_rate: "0",
+        term_months: "12",
+        include_in_income: false,
+      });
+    }
+  }, [loan, reset, isOpen]);
+
   const onSubmit = (data: FormInput) => {
-    createLoan.mutate({
+    const payload = {
       ...data,
       principal: Number(data.principal),
       interest_rate: Number(data.interest_rate),
       term_months: Number(data.term_months),
       person_name: currentUser,
       budget_id: budgetId,
-    }, {
-      onSuccess: () => {
-        toast.success("Loan added successfully");
-        reset();
-        onClose();
-      },
-      onError: () => {
-        toast.error("Failed to add loan");
-      }
-    });
+    };
+
+    if (isEditing && loan) {
+      updateLoan.mutate({ id: loan.id, ...payload }, {
+        onSuccess: () => {
+          toast.success("Loan updated successfully");
+          reset();
+          onClose();
+        },
+        onError: () => {
+          toast.error("Failed to update loan");
+        }
+      });
+    } else {
+      createLoan.mutate(payload, {
+        onSuccess: () => {
+          toast.success("Loan added successfully");
+          reset();
+          onClose();
+        },
+        onError: () => {
+          toast.error("Failed to add loan");
+        }
+      });
+    }
   };
 
   return (
     <BottomSheet
       id="loan-sheet"
-      title="เพิ่มหนี้สินใหม่"
+      title={isEditing ? "แก้ไขหนี้สิน" : "เพิ่มหนี้สินใหม่"}
       isOpen={isOpen}
       onClose={onClose}
     >
@@ -116,6 +166,13 @@ export default function LoanSheet({ isOpen, onClose, budgetId }: LoanSheetProps)
           />
         </div>
 
+        {previewMonthly > 0 && (
+          <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 flex justify-between items-center">
+            <span className="text-sm font-bold text-gray-500">ยอดชำระต่อเดือนโดยประมาณ</span>
+            <span className="text-lg font-black text-primary">{formatCurrency(previewMonthly)}</span>
+          </div>
+        )}
+
         <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
           <label className="label cursor-pointer flex items-center gap-3">
             <input
@@ -134,10 +191,10 @@ export default function LoanSheet({ isOpen, onClose, budgetId }: LoanSheetProps)
 
         <button 
           type="submit" 
-          className={cn("btn btn-primary w-full rounded-xl text-lg h-14", createLoan.isPending && "loading")}
-          disabled={createLoan.isPending}
+          className={cn("btn btn-primary w-full rounded-xl text-lg h-14", (createLoan.isPending || updateLoan.isPending) && "loading")}
+          disabled={createLoan.isPending || updateLoan.isPending}
         >
-          บันทึกรายการ
+          {isEditing ? "อัปเดตรายการ" : "บันทึกรายการ"}
         </button>
       </form>
     </BottomSheet>

@@ -101,7 +101,7 @@ export default function CategorySheet({ isOpen, onClose, budgetId, initialData }
 
         <div className="form-control w-full">
           <label className="label">
-            <span className="label-text font-bold text-gray-700">งบประมาณรายเดือน (จะหักออกจาก Remaining Pool)</span>
+            <span className="label-text font-bold text-gray-700">งบประมาณรายเดือน (จะหักออกจากรายรับและงบส่วนตัว)</span>
           </label>
           <input
             {...register("monthly_budget")}
@@ -124,7 +124,7 @@ export default function CategorySheet({ isOpen, onClose, budgetId, initialData }
           )}
           <button 
             type="submit" 
-            className={cn("btn btn-primary flex-[2] rounded-2xl text-lg h-14", saveCategory.isPending && "loading")}
+            className={cn("btn btn-primary flex-2 rounded-2xl text-lg h-14", saveCategory.isPending && "loading")}
             disabled={saveCategory.isPending}
           >
             {initialData ? "บันทึกการแก้ไข" : "เพิ่มหมวดหมู่"}

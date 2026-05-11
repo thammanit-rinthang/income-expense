@@ -79,6 +79,9 @@ export async function POST(request: Request) {
           await tx.monthlyBudget.update({
             where: { id: validatedData.budget_id },
             data: {
+              total_income: {
+                decrement: validatedData.amount,
+              },
               remaining_spending_pool: {
                 decrement: validatedData.amount,
               },
@@ -135,7 +138,10 @@ export async function PATCH(request: Request) {
         if (!hadAllocation) {
           await tx.monthlyBudget.update({
             where: { id: oldTx.budget_id },
-            data: { remaining_spending_pool: { increment: oldTx.amount } },
+            data: { 
+              total_income: { increment: oldTx.amount },
+              remaining_spending_pool: { increment: oldTx.amount } 
+            },
           });
         }
       }
@@ -168,7 +174,10 @@ export async function PATCH(request: Request) {
         if (!hasAllocation) {
           await tx.monthlyBudget.update({
             where: { id: updatedTx.budget_id },
-            data: { remaining_spending_pool: { decrement: updatedTx.amount } },
+            data: { 
+              total_income: { decrement: updatedTx.amount },
+              remaining_spending_pool: { decrement: updatedTx.amount } 
+            },
           });
         }
       }
@@ -217,7 +226,10 @@ export async function DELETE(request: Request) {
         if (!hadAllocation) {
           await tx.monthlyBudget.update({
             where: { id: transaction.budget_id },
-            data: { remaining_spending_pool: { increment: transaction.amount } },
+            data: { 
+              total_income: { increment: transaction.amount },
+              remaining_spending_pool: { increment: transaction.amount } 
+            },
           });
         }
       }

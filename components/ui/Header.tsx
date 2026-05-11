@@ -10,28 +10,28 @@ export default function Header() {
   const { dashboardView, setDashboardView } = useUIStore();
 
   return (
-    <header className="flex flex-col gap-4 p-4 bg-base-100 border-b-[0.5px] border-base-300 sticky top-0 z-40">
+    <header className="flex flex-col gap-3 p-3 sm:p-4 bg-base-100 border-b-[0.5px] border-base-300 sticky top-0 z-40">
       <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-black tracking-tight text-primary">คนจะรวย</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg sm:text-xl font-black tracking-tight text-primary">คนจะรวย</h1>
           <div className="flex bg-base-200 p-1 rounded-xl">
             <button
               onClick={() => setDashboardView("personal")}
               className={cn(
-                "p-1.5 rounded-xl transition-all",
+                "p-1 rounded-xl transition-all",
                 dashboardView === "personal" ? "bg-white text-primary" : "text-gray-400"
               )}
             >
-              <User size={16} />
+              <User size={14} />
             </button>
             <button
               onClick={() => setDashboardView("combined")}
               className={cn(
-                "p-1.5 rounded-xl transition-all",
+                "p-1 rounded-xl transition-all",
                 dashboardView === "combined" ? "bg-white text-primary" : "text-gray-400"
               )}
             >
-              <Users size={16} />
+              <Users size={14} />
             </button>
           </div>
         </div>

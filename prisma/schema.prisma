@@ -115,6 +115,8 @@ model Loan {
 
   is_paid Boolean @default(false)
 
+  include_in_income Boolean @default(false)
+
   created_at DateTime @default(now())
 
   payments LoanPayment[]
