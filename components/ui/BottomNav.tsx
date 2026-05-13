@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Wallet, Plus, ReceiptRussianRuble, CreditCard } from "lucide-react";
+import { LayoutDashboard, Wallet, Plus, ReceiptRussianRuble, ArrowDownLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { useUIStore } from "@/store/uiStore";
@@ -12,7 +12,7 @@ const tabs = [
   { name: "Income", href: "/income", icon: Wallet },
   { name: "Add", onClick: true, icon: Plus, isFab: true },
   { name: "Loans", href: "/loans", icon: ReceiptRussianRuble },
-  { name: "Cards", href: "/cards", icon: CreditCard },
+  { name: "Receive", href: "/receive", icon: ArrowDownLeft },
 ];
 
 export default function BottomNav() {

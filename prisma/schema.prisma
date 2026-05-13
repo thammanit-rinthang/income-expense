@@ -47,7 +47,28 @@ model MonthlyBudget {
 
   loans Loan[]
 
+  received_payments ReceivedPayment[]
+
   @@map("monthly_budgets")
+}
+
+model ReceivedPayment {
+  id Int @id @default(autoincrement())
+
+  budget_id Int
+
+  budget MonthlyBudget @relation(fields: [budget_id], references: [id], onDelete: Cascade)
+
+  amount Decimal
+
+  sender String
+
+  note String @default("")
+
+  received_at DateTime @default(now())
+
+  @@index([budget_id])
+  @@map("received_payments")
 }
 
 model FixedCost {
