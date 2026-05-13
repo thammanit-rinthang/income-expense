@@ -14,6 +14,8 @@ import { useCategories } from "@/hooks/useCategories";
 import CategoryItem from "@/components/categories/CategoryItem";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import { useMonthStore } from "@/store/monthStore";
+import { useEffect, useRef } from "react";
 
 export default function Home() {
   const { data: budget, isLoading } = useMonthlyBudget();
@@ -22,7 +24,24 @@ export default function Home() {
   
   const { data: fixedCosts } = useFixedCosts(budget?.id || null);
   const { data: categories } = useCategories(budget?.id || null);
+  const { selectedMonth } = useMonthStore();
   const { mutate: toggleFixedCost, isPending: isToggling } = useToggleFixedCost();
+  const hasAutoOpened = useRef(false);
+
+  const today = new Date();
+  const is25thOrLater = today.getDate() >= 25;
+  const isCurrentMonth = 
+    selectedMonth.getMonth() === today.getMonth() && 
+    selectedMonth.getFullYear() === today.getFullYear();
+  
+  const showIncomeWarning = is25thOrLater && isCurrentMonth && budget && Number(budget.total_income) === 0;
+
+  useEffect(() => {
+    if (showIncomeWarning && !hasAutoOpened.current) {
+      setIsBudgetEditOpen(true);
+      hasAutoOpened.current = true;
+    }
+  }, [showIncomeWarning]);
 
   const unpaidFixedCosts = fixedCosts?.filter(f => !f.is_paid) || [];
   const allocatedCategories = categories?.filter(c => c.monthly_budget && Number(c.monthly_budget) > 0) || [];
@@ -40,6 +59,22 @@ export default function Home() {
       <div className="flex-1 px-4 pt-6 pb-24 space-y-5">
         {dashboardView === "personal" ? (
           <>
+            {/* Income Warning Banner */}
+            {showIncomeWarning && (
+              <section 
+                onClick={() => setIsBudgetEditOpen(true)}
+                className="bg-error/10 border border-error/20 p-4 rounded-xl flex items-center gap-3 cursor-pointer animate-pulse"
+              >
+                <div className="bg-error text-white p-2 rounded-lg">
+                  <AlertCircle size={20} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-error">ยังไม่ได้ระบุรายรับเดือนนี้</p>
+                  <p className="text-[10px] text-error/70 font-medium">วันนี้วันที่ {today.getDate()} แล้ว กรุณาระบุรายรับเพื่อให้ระบบคำนวณงบประมาณ</p>
+                </div>
+              </section>
+            )}
+
             {/* Remaining Pool Summary Card */}
             <section className="bg-primary p-6 rounded-xl relative overflow-hidden text-primary-content">
               <div className="relative z-10">
