@@ -16,13 +16,10 @@ const schema = z.object({
   id: z.number().optional(),
   budget_id: z.number(),
   amount: z.coerce.number().min(0.01, "ยอดเงินต้องมากกว่า 0"),
-  description: z.string().min(1, "กรุณากรอกรายละเอียด"),
+  description: z.string().optional(),
   category_id: z.coerce.number().nullable().optional(),
   card_id: z.coerce.number().nullable().optional(),
   created_at: z.string().optional(),
-}).refine(data => data.category_id != null || data.card_id != null, {
-  message: "กรุณาเลือกหมวดหมู่หรือบัตรเครดิต",
-  path: ["category_id"],
 });
 
 interface TransactionSheetProps {
@@ -142,7 +139,9 @@ export default function TransactionSheet({ isOpen, onClose, budgetId, transactio
 
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-bold text-gray-700">รายละเอียด</span>
+            <span className="label-text font-bold text-gray-700">
+              รายละเอียด <span className="text-gray-400 font-normal text-xs">(ไม่บังคับ)</span>
+            </span>
           </label>
           <input
             {...register("description")}
@@ -168,7 +167,7 @@ export default function TransactionSheet({ isOpen, onClose, budgetId, transactio
                 if (val !== "") setValue("card_id", null);
               }}
             >
-              <option value="">เลือกหมวดหมู่</option>
+              <option value="">เงินรายรับ (ยังไม่แยกหมวดหมู่)</option>
               {categories?.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}

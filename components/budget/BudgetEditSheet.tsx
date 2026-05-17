@@ -9,9 +9,10 @@ import { useUpdateMonthlyBudget, MonthlyBudget } from "@/hooks/useMonthlyBudget"
 import { useFixedCosts, useDeleteFixedCost, useToggleFixedCost, FixedCost } from "@/hooks/useFixedCosts";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
-import { Plus } from "lucide-react";
+import { Plus, Copy } from "lucide-react";
 import FixedCostSheet from "./FixedCostSheet";
 import FixedCostItem from "./FixedCostItem";
+import CopyFixedCostSheet from "./CopyFixedCostSheet";
 
 const budgetSchema = z.object({
   id: z.number(),
@@ -32,6 +33,7 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
   const { mutate: toggleFixedCost } = useToggleFixedCost();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isCopySheetOpen, setIsCopySheetOpen] = useState(false);
   const [editingFixedCost, setEditingFixedCost] = useState<FixedCost | null>(null);
 
   const {
@@ -149,19 +151,38 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold text-gray-800">รายการค่าใช้จ่ายคงที่</h3>
-            <button 
-              onClick={handleAddFixedCost}
-              className="btn btn-sm btn-ghost text-primary gap-1"
-            >
-              <Plus size={16} />
-              เพิ่มรายการ
-            </button>
+            <div className="flex gap-1">
+              <button 
+                type="button"
+                onClick={() => setIsCopySheetOpen(true)}
+                className="btn btn-sm btn-ghost text-primary gap-1 px-2 hover:bg-primary/5 rounded-lg font-bold text-xs"
+              >
+                <Copy size={14} />
+                ก็อปปี้จากเดือนที่แล้ว
+              </button>
+              <button 
+                type="button"
+                onClick={handleAddFixedCost}
+                className="btn btn-sm btn-ghost text-primary gap-1 px-2 hover:bg-primary/5 rounded-lg font-bold text-xs"
+              >
+                <Plus size={14} />
+                เพิ่มรายการ
+              </button>
+            </div>
           </div>
 
           <div className="grid gap-3">
             {fixedCosts?.length === 0 ? (
-              <div className="text-center py-8 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                <p className="text-sm text-gray-400">ยังไม่มีรายการค่าใช้จ่ายคงที่</p>
+              <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center gap-3">
+                <p className="text-sm text-gray-400 font-medium">ยังไม่มีรายการค่าใช้จ่ายคงที่</p>
+                <button
+                  type="button"
+                  onClick={() => setIsCopySheetOpen(true)}
+                  className="btn btn-xs btn-outline btn-primary rounded-lg font-bold"
+                >
+                  <Copy size={12} />
+                  ก็อปปี้จากเดือนที่แล้ว
+                </button>
               </div>
             ) : (
               fixedCosts?.map((fixed) => (
@@ -184,6 +205,20 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
         onClose={() => setIsSheetOpen(false)}
         budgetId={budget.id}
         fixedCost={editingFixedCost}
+        onCopyClick={() => {
+          setIsSheetOpen(false);
+          setTimeout(() => {
+            setIsCopySheetOpen(true);
+          }, 200);
+        }}
+      />
+
+      <CopyFixedCostSheet
+        isOpen={isCopySheetOpen}
+        onClose={() => setIsCopySheetOpen(false)}
+        budgetId={budget.id}
+        personName={budget.person_name}
+        currentMonthYear={budget.month_year}
       />
     </BottomSheet>
   );

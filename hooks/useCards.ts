@@ -46,6 +46,29 @@ export function useCardTransactions(cardId: number | null, month?: string) {
   });
 }
 
+export interface CardPayment {
+  id: number;
+  card_id: number;
+  amount: number;
+  note: string;
+  paid_at: string;
+}
+
+export function useCardPayments(cardId: number | null, month?: string) {
+  return useQuery({
+    queryKey: ["card-payments", cardId, month],
+    queryFn: async () => {
+      if (!cardId) return [];
+      const url = month 
+        ? `/api/cards/${cardId}/payments?month=${month}`
+        : `/api/cards/${cardId}/payments`;
+      const { data } = await axios.get<CardPayment[]>(url);
+      return data;
+    },
+    enabled: !!cardId,
+  });
+}
+
 export function useSaveCard() {
   const queryClient = useQueryClient();
   return useMutation({

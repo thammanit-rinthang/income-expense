@@ -212,10 +212,14 @@ export default function TransactionsPage() {
                             {t.card_id ? <CreditCard size={20} /> : <Receipt size={20} />}
                           </div>
                           <div>
-                            <p className="font-bold text-gray-900 text-base">{t.description}</p>
-                            <p className="text-[10px] text-gray-500 font-black uppercase tracking-wider">
-                              {t.category?.name || t.card?.name || "ทั่วไป"}
+                            <p className="font-bold text-gray-900 text-base">
+                              {t.description || t.category?.name || t.card?.name || "ทั่วไป"}
                             </p>
+                            {t.description && (t.category?.name || t.card?.name) && (
+                              <p className="text-[10px] text-gray-500 font-black uppercase tracking-wider">
+                                {t.category?.name || t.card?.name}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <p className={cn(

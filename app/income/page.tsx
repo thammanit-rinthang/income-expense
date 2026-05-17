@@ -9,6 +9,7 @@ import CategoryItem from "@/components/categories/CategoryItem";
 import CategorySheet from "@/components/categories/CategorySheet";
 import FixedCostItem from "@/components/budget/FixedCostItem";
 import FixedCostSheet from "@/components/budget/FixedCostSheet";
+import CopyFixedCostSheet from "@/components/budget/CopyFixedCostSheet";
 import { Plus, Settings2, ReceiptText } from "lucide-react";
 import toast from "react-hot-toast";
 import IncomeSummary from "@/components/summary/IncomeSummary";
@@ -19,6 +20,7 @@ export default function IncomePage() {
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   
   const [isFixedSheetOpen, setIsFixedSheetOpen] = useState(false);
+  const [isCopySheetOpen, setIsCopySheetOpen] = useState(false);
   const [selectedFixedCost, setSelectedFixedCost] = useState<any>(null);
 
   const { data: budget, isLoading: isBudgetLoading } = useMonthlyBudget();
@@ -186,6 +188,20 @@ export default function IncomePage() {
             onClose={() => setIsFixedSheetOpen(false)}
             budgetId={budget.id}
             fixedCost={selectedFixedCost}
+            onCopyClick={() => {
+              setIsFixedSheetOpen(false);
+              setTimeout(() => {
+                setIsCopySheetOpen(true);
+              }, 200);
+            }}
+          />
+
+          <CopyFixedCostSheet
+            isOpen={isCopySheetOpen}
+            onClose={() => setIsCopySheetOpen(false)}
+            budgetId={budget.id}
+            personName={budget.person_name}
+            currentMonthYear={budget.month_year}
           />
         </>
       )}

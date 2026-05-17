@@ -42,6 +42,20 @@ export function useSaveFixedCost() {
   });
 }
 
+export function useBulkSaveFixedCosts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ budgetId, items }: { budgetId: number; items: Array<{ name: string; amount: number }> }) => {
+      const { data } = await axios.post("/api/fixed-costs/bulk", { budget_id: budgetId, items });
+      return { budgetId, data };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["fixed-costs", data.budgetId] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-budget"] });
+    },
+  });
+}
+
 export function useDeleteFixedCost() {
   const queryClient = useQueryClient();
   return useMutation({

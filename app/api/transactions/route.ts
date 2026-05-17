@@ -7,12 +7,79 @@ const transactionSchema = z.object({
   category_id: z.number().nullable().optional(),
   card_id: z.number().nullable().optional(),
   amount: z.number().positive(),
-  description: z.string().min(1),
+  description: z.string().optional().nullable().transform(val => val || ""),
   created_at: z.string().optional().nullable(),
-}).refine(data => data.category_id != null || data.card_id != null, {
-  message: "Must have either a category or a credit card",
-  path: ["category_id", "card_id"],
 });
+
+// Helper to calculate excess amount for a cash transaction being applied
+async function calculateExcessToApply(tx: any, budgetId: number, categoryId: number, amount: number) {
+  const category = await tx.budgetCategory.findUnique({
+    where: { id: categoryId },
+    select: { monthly_budget: true },
+  });
+
+  const categoryBudget = Number(category?.monthly_budget || 0);
+  if (categoryBudget <= 0) {
+    // If no allocation, the entire amount is deducted from the unallocated pool
+    return amount;
+  }
+
+  // Get total spent in this category so far (only cash/transfer counts against category budget)
+  const spentResult = await tx.transaction.aggregate({
+    where: { 
+      category_id: categoryId,
+      card_id: null,
+    },
+    _sum: { amount: true }
+  });
+  const spentBefore = Number(spentResult._sum.amount || 0);
+
+  if (spentBefore >= categoryBudget) {
+    // Already over budget, so the entire new amount is excess
+    return amount;
+  } else {
+    const available = categoryBudget - spentBefore;
+    if (amount > available) {
+      return amount - available;
+    }
+    return 0;
+  }
+}
+
+// Helper to calculate excess amount to refund when a cash transaction is deleted/reverted
+async function calculateExcessToRevert(tx: any, budgetId: number, categoryId: number, amount: number, txIdToExclude: number) {
+  const category = await tx.budgetCategory.findUnique({
+    where: { id: categoryId },
+    select: { monthly_budget: true },
+  });
+
+  const categoryBudget = Number(category?.monthly_budget || 0);
+  if (categoryBudget <= 0) {
+    // If no allocation, the entire amount is refunded
+    return amount;
+  }
+
+  // Get total spent in this category *excluding* the transaction being reverted
+  const spentResult = await tx.transaction.aggregate({
+    where: { 
+      category_id: categoryId,
+      card_id: null,
+      id: { not: txIdToExclude }
+    },
+    _sum: { amount: true }
+  });
+  const spentBefore = Number(spentResult._sum.amount || 0);
+  const spentWith = spentBefore + amount;
+
+  if (spentWith <= categoryBudget) {
+    // No excess was reached with this transaction
+    return 0;
+  } else {
+    // Calculate how much excess this transaction contributed
+    const totalExcess = spentWith - categoryBudget;
+    return Math.min(amount, totalExcess);
+  }
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -66,24 +133,22 @@ export async function POST(request: Request) {
             },
           },
         });
-      } else if (validatedData.category_id) {
-        // Path A: Cash/Transfer
-        const category = await tx.budgetCategory.findUnique({
-          where: { id: validatedData.category_id },
-          select: { monthly_budget: true },
-        });
+      } else {
+        // Path A: Cash/Transfer (card_id is null)
+        let deductAmount = validatedData.amount;
+        if (validatedData.category_id) {
+          deductAmount = await calculateExcessToApply(tx, validatedData.budget_id, validatedData.category_id, validatedData.amount);
+        }
 
-        const hasAllocation = category?.monthly_budget && Number(category.monthly_budget) > 0;
-
-        if (!hasAllocation) {
+        if (deductAmount > 0) {
           await tx.monthlyBudget.update({
             where: { id: validatedData.budget_id },
             data: {
               total_income: {
-                decrement: validatedData.amount,
+                decrement: deductAmount,
               },
               remaining_spending_pool: {
-                decrement: validatedData.amount,
+                decrement: deductAmount,
               },
             },
           });
@@ -128,19 +193,19 @@ export async function PATCH(request: Request) {
           where: { id: oldTx.card_id },
           data: { statement_balance: { decrement: oldTx.amount } },
         });
-      } else if (oldTx.category_id && oldTx.budget_id) {
-        const oldCat = await tx.budgetCategory.findUnique({
-          where: { id: oldTx.category_id },
-          select: { monthly_budget: true },
-        });
-        const hadAllocation = oldCat?.monthly_budget && Number(oldCat.monthly_budget) > 0;
-        
-        if (!hadAllocation) {
+      } else if (oldTx.budget_id) {
+        // Revert Cash/Transfer
+        let refundAmount = Number(oldTx.amount);
+        if (oldTx.category_id) {
+          refundAmount = await calculateExcessToRevert(tx, oldTx.budget_id, oldTx.category_id, Number(oldTx.amount), oldTx.id);
+        }
+
+        if (refundAmount > 0) {
           await tx.monthlyBudget.update({
             where: { id: oldTx.budget_id },
             data: { 
-              total_income: { increment: oldTx.amount },
-              remaining_spending_pool: { increment: oldTx.amount } 
+              total_income: { increment: refundAmount },
+              remaining_spending_pool: { increment: refundAmount } 
             },
           });
         }
@@ -151,7 +216,7 @@ export async function PATCH(request: Request) {
         where: { id: parseInt(id) },
         data: {
           amount: amount !== undefined ? parseFloat(amount) : undefined,
-          description: description !== undefined ? description : undefined,
+          description: description !== undefined ? (description ?? "") : undefined,
           category_id: category_id !== undefined ? (category_id === null ? null : Number(category_id)) : undefined,
           card_id: card_id !== undefined ? (card_id === null ? null : Number(card_id)) : undefined,
           created_at: created_at ? new Date(created_at) : undefined,
@@ -164,19 +229,19 @@ export async function PATCH(request: Request) {
           where: { id: updatedTx.card_id },
           data: { statement_balance: { increment: updatedTx.amount } },
         });
-      } else if (updatedTx.category_id && updatedTx.budget_id) {
-        const newCat = await tx.budgetCategory.findUnique({
-          where: { id: updatedTx.category_id },
-          select: { monthly_budget: true },
-        });
-        const hasAllocation = newCat?.monthly_budget && Number(newCat.monthly_budget) > 0;
+      } else if (updatedTx.budget_id) {
+        // Apply new Cash/Transfer
+        let deductAmount = Number(updatedTx.amount);
+        if (updatedTx.category_id) {
+          deductAmount = await calculateExcessToApply(tx, updatedTx.budget_id, updatedTx.category_id, Number(updatedTx.amount));
+        }
 
-        if (!hasAllocation) {
+        if (deductAmount > 0) {
           await tx.monthlyBudget.update({
             where: { id: updatedTx.budget_id },
             data: { 
-              total_income: { decrement: updatedTx.amount },
-              remaining_spending_pool: { decrement: updatedTx.amount } 
+              total_income: { decrement: deductAmount },
+              remaining_spending_pool: { decrement: deductAmount } 
             },
           });
         }
@@ -216,19 +281,19 @@ export async function DELETE(request: Request) {
           where: { id: transaction.card_id },
           data: { statement_balance: { decrement: transaction.amount } },
         });
-      } else if (transaction.category_id && transaction.budget_id) {
-        const cat = await tx.budgetCategory.findUnique({
-          where: { id: transaction.category_id },
-          select: { monthly_budget: true },
-        });
-        const hadAllocation = cat?.monthly_budget && Number(cat.monthly_budget) > 0;
+      } else if (transaction.budget_id) {
+        // Refund Cash/Transfer
+        let refundAmount = Number(transaction.amount);
+        if (transaction.category_id) {
+          refundAmount = await calculateExcessToRevert(tx, transaction.budget_id, transaction.category_id, Number(transaction.amount), transaction.id);
+        }
 
-        if (!hadAllocation) {
+        if (refundAmount > 0) {
           await tx.monthlyBudget.update({
             where: { id: transaction.budget_id },
             data: { 
-              total_income: { increment: transaction.amount },
-              remaining_spending_pool: { increment: transaction.amount } 
+              total_income: { increment: refundAmount },
+              remaining_spending_pool: { increment: refundAmount } 
             },
           });
         }

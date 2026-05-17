@@ -8,6 +8,7 @@ import BottomSheet from "@/components/ui/BottomSheet";
 import { useSaveFixedCost, FixedCost } from "@/hooks/useFixedCosts";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
+import { Copy } from "lucide-react";
 
 const schema = z.object({
   id: z.number().optional(),
@@ -22,9 +23,10 @@ interface FixedCostSheetProps {
   onClose: () => void;
   budgetId: number;
   fixedCost?: FixedCost | null;
+  onCopyClick?: () => void;
 }
 
-export default function FixedCostSheet({ isOpen, onClose, budgetId, fixedCost }: FixedCostSheetProps) {
+export default function FixedCostSheet({ isOpen, onClose, budgetId, fixedCost, onCopyClick }: FixedCostSheetProps) {
   const { mutate: saveFixedCost, isPending } = useSaveFixedCost();
 
   const {
@@ -81,6 +83,25 @@ export default function FixedCostSheet({ isOpen, onClose, budgetId, fixedCost }:
       onClose={onClose}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {!fixedCost && onCopyClick && (
+          <div className="bg-primary/5 border border-primary/10 p-4 rounded-xl flex items-center justify-between gap-3 mb-2 animate-in fade-in duration-200">
+            <div className="flex items-center gap-3">
+              <Copy className="text-primary shrink-0" size={18} />
+              <div>
+                <p className="text-xs font-bold text-gray-800">มีรายการค่าใช้จ่ายจากเดือนที่แล้ว?</p>
+                <p className="text-[10px] text-gray-500 font-medium">คุณสามารถคัดลอกรายการค่าใช้จ่ายคงที่ทั้งหมดของเดือนที่แล้วมาใช้งานได้ทันที</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onCopyClick}
+              className="btn btn-xs btn-primary rounded-lg font-bold shrink-0"
+            >
+              ก็อปปี้จากเดือนที่แล้ว
+            </button>
+          </div>
+        )}
+
         <div className="form-control">
           <label className="label">
             <span className="label-text font-bold">ชื่อรายการ</span>

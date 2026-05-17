@@ -54,10 +54,14 @@ export default function RecentTransactions({ budgetId }: { budgetId: number }) {
                       isIncome ? "bg-success" : isCreditCard ? "bg-purple-500" : "bg-primary"
                     )} />
                     <div>
-                      <p className="text-base font-semibold text-base-content leading-tight">{t.description}</p>
-                      <p className="text-sm font-normal text-base-content/50">
-                        {t.category?.name || t.card?.name || "ทั่วไป"}
+                      <p className="text-base font-semibold text-base-content leading-tight">
+                        {t.description || t.category?.name || t.card?.name || "ทั่วไป"}
                       </p>
+                      {t.description && (t.category?.name || t.card?.name) && (
+                        <p className="text-sm font-normal text-base-content/50">
+                          {t.category?.name || t.card?.name}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <p className={cn(

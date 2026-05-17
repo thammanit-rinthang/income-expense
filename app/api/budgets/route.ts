@@ -11,7 +11,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "person_name and month are required" }, { status: 400 });
   }
 
-  const monthDate = dayjs(monthStr).startOf("month").toDate();
+  const parsed = dayjs(monthStr);
+  const monthDate = new Date(Date.UTC(parsed.year(), parsed.month(), 1));
 
   try {
     let budget = await prisma.monthlyBudget.findFirst({
