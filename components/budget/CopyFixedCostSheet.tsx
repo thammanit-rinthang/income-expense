@@ -25,14 +25,15 @@ export default function CopyFixedCostSheet({
   personName,
   currentMonthYear,
 }: CopyFixedCostSheetProps) {
-  const prevMonthDate = dayjs(currentMonthYear).subtract(1, "month").startOf("month");
+  const prevMonthDate = dayjs(currentMonthYear).subtract(1, "month");
+  const formattedPrevMonth = prevMonthDate.format("YYYY-MM-DD");
   
   // Fetch previous month's budget
   const { data: prevBudget, isLoading: isLoadingPrevBudget, error: prevBudgetError } = useQuery({
-    queryKey: ["monthly-budget-copy-source", personName, prevMonthDate.toISOString()],
+    queryKey: ["monthly-budget-copy-source", personName, formattedPrevMonth],
     queryFn: async () => {
       const { data } = await axios.get<any>(
-        `/api/budgets?person_name=${personName}&month=${prevMonthDate.toISOString()}`
+        `/api/budgets?person_name=${personName}&month=${formattedPrevMonth}`
       );
       return data;
     },

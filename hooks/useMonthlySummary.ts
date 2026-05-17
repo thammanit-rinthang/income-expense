@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useMonthStore } from "@/store/monthStore";
+import dayjs from "dayjs";
 
 export interface MonthlySummary {
   summary: {
@@ -26,12 +27,13 @@ export interface MonthlySummary {
 
 export function useMonthlySummary() {
   const { selectedMonth } = useMonthStore();
+  const formattedMonth = dayjs(selectedMonth).format("YYYY-MM-DD");
 
   return useQuery({
-    queryKey: ["monthly-summary", selectedMonth.toISOString()],
+    queryKey: ["monthly-summary", formattedMonth],
     queryFn: async () => {
       const { data } = await axios.get<MonthlySummary>(
-        `/api/summary?month=${selectedMonth.toISOString()}`
+        `/api/summary?month=${formattedMonth}`
       );
       return data;
     },

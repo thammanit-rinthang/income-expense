@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useUserStore } from "@/store/userStore";
 import { useMonthStore } from "@/store/monthStore";
+import dayjs from "dayjs";
 
 export interface ReceivedPayment {
   id: number;
@@ -38,6 +39,7 @@ export function useReceivePayment() {
   const queryClient = useQueryClient();
   const { currentUser } = useUserStore();
   const { selectedMonth } = useMonthStore();
+  const formattedMonth = dayjs(selectedMonth).format("YYYY-MM-DD");
 
   return useMutation({
     mutationFn: async (input: ReceivePaymentInput) => {
@@ -50,7 +52,7 @@ export function useReceivePayment() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["received-payments", variables.budget_id] });
       queryClient.invalidateQueries({
-        queryKey: ["monthly-budget", currentUser, selectedMonth.toISOString()],
+        queryKey: ["monthly-budget", currentUser, formattedMonth],
       });
       queryClient.invalidateQueries({ queryKey: ["monthly-summary"] });
     },
@@ -61,6 +63,7 @@ export function useDeleteReceivedPayment() {
   const queryClient = useQueryClient();
   const { currentUser } = useUserStore();
   const { selectedMonth } = useMonthStore();
+  const formattedMonth = dayjs(selectedMonth).format("YYYY-MM-DD");
 
   return useMutation({
     mutationFn: async ({ id }: { id: number; budget_id: number }) => {
@@ -70,7 +73,7 @@ export function useDeleteReceivedPayment() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["received-payments", variables.budget_id] });
       queryClient.invalidateQueries({
-        queryKey: ["monthly-budget", currentUser, selectedMonth.toISOString()],
+        queryKey: ["monthly-budget", currentUser, formattedMonth],
       });
       queryClient.invalidateQueries({ queryKey: ["monthly-summary"] });
     },
