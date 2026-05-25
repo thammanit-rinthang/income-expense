@@ -7,8 +7,16 @@ interface MonthState {
   prevMonth: () => void;
 }
 
+const getInitialMonth = () => {
+  const today = new Date();
+  if (today.getDate() >= 25) {
+    today.setMonth(today.getMonth() + 1);
+  }
+  return today;
+};
+
 export const useMonthStore = create<MonthState>((set) => ({
-  selectedMonth: new Date(),
+  selectedMonth: getInitialMonth(),
   setSelectedMonth: (date) => set({ selectedMonth: date }),
   nextMonth: () =>
     set((state) => {
