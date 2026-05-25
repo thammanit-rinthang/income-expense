@@ -40,7 +40,6 @@ export async function POST(request: Request) {
         await tx.monthlyBudget.update({
           where: { id: fc.budget_id },
           data: {
-            total_income: { decrement: fc.amount },
             remaining_spending_pool: { decrement: fc.amount },
           },
         });
@@ -87,9 +86,6 @@ export async function PATCH(request: Request) {
         await tx.monthlyBudget.update({
           where: { id: updatedFixedCost.budget_id },
           data: {
-            total_income: {
-              [is_paid ? "decrement" : "increment"]: amountToUpdate,
-            },
             remaining_spending_pool: {
               [is_paid ? "decrement" : "increment"]: amountToUpdate,
             },
@@ -130,9 +126,6 @@ export async function DELETE(request: Request) {
         await tx.monthlyBudget.update({
           where: { id: fixedCost.budget_id },
           data: {
-            total_income: {
-              increment: fixedCost.amount,
-            },
             remaining_spending_pool: {
               increment: fixedCost.amount,
             },

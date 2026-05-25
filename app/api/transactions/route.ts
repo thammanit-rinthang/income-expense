@@ -144,9 +144,6 @@ export async function POST(request: Request) {
           await tx.monthlyBudget.update({
             where: { id: validatedData.budget_id },
             data: {
-              total_income: {
-                decrement: deductAmount,
-              },
               remaining_spending_pool: {
                 decrement: deductAmount,
               },
@@ -204,7 +201,6 @@ export async function PATCH(request: Request) {
           await tx.monthlyBudget.update({
             where: { id: oldTx.budget_id },
             data: { 
-              total_income: { increment: refundAmount },
               remaining_spending_pool: { increment: refundAmount } 
             },
           });
@@ -240,7 +236,6 @@ export async function PATCH(request: Request) {
           await tx.monthlyBudget.update({
             where: { id: updatedTx.budget_id },
             data: { 
-              total_income: { decrement: deductAmount },
               remaining_spending_pool: { decrement: deductAmount } 
             },
           });
@@ -292,7 +287,6 @@ export async function DELETE(request: Request) {
           await tx.monthlyBudget.update({
             where: { id: transaction.budget_id },
             data: { 
-              total_income: { increment: refundAmount },
               remaining_spending_pool: { increment: refundAmount } 
             },
           });
