@@ -19,7 +19,11 @@ export async function GET(request: Request) {
     const budgets = await prisma.monthlyBudget.findMany({
       where: { month_year: monthDate },
       include: {
-        fixed_costs: true,
+        fixed_costs: {
+          where: { is_paid: true },
+        },
+        loan_payments: true,
+        card_payments: true,
         transactions: {
           where: { card_id: null } // Only cash/transfer counts as "spent" from pool in this context?
         }
@@ -29,14 +33,18 @@ export async function GET(request: Request) {
     const bonBudget = budgets.find(b => b.person_name === "Bon");
     const rayBudget = budgets.find(b => b.person_name === "Ray");
 
-    const getSpent = (budget: any) => {
+    const getSpent = (budget: (typeof budgets)[number] | undefined) => {
       if (!budget) return new Prisma.Decimal(0);
-      return budget.transactions.reduce((acc: Prisma.Decimal, t: any) => acc.plus(t.amount), new Prisma.Decimal(0));
+      const transactions = budget.transactions.reduce((acc, t) => acc.plus(t.amount), new Prisma.Decimal(0));
+      const fixed = budget.fixed_costs.reduce((acc, f) => acc.plus(f.amount), new Prisma.Decimal(0));
+      const loans = budget.loan_payments.reduce((acc, l) => acc.plus(l.amount), new Prisma.Decimal(0));
+      const cards = budget.card_payments.reduce((acc, c) => acc.plus(c.amount), new Prisma.Decimal(0));
+      return transactions.plus(fixed).plus(loans).plus(cards);
     };
 
-    const getFixed = (budget: any) => {
+    const getFixed = (budget: (typeof budgets)[number] | undefined) => {
       if (!budget) return new Prisma.Decimal(0);
-      return budget.fixed_costs.reduce((acc: Prisma.Decimal, f: any) => acc.plus(f.amount), new Prisma.Decimal(0));
+      return budget.fixed_costs.reduce((acc, f) => acc.plus(f.amount), new Prisma.Decimal(0));
     };
 
     const bonSpent = getSpent(bonBudget);

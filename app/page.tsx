@@ -46,6 +46,7 @@ export default function Home() {
   const unpaidFixedCosts = fixedCosts?.filter(f => !f.is_paid) || [];
   const allocatedCategories = categories?.filter(c => c.monthly_budget && Number(c.monthly_budget) > 0) || [];
   const actualSpent = Number(budget?.actual_spent || 0);
+  const reservedAmount = Number(budget?.reserved_amount || 0);
 
   const handleToggleFixedCost = (id: number, is_paid: boolean) => {
     toggleFixedCost({ id, is_paid }, {
@@ -80,7 +81,7 @@ export default function Home() {
             <section className="bg-primary p-6 rounded-xl relative overflow-hidden text-primary-content">
               <div className="relative z-10">
                 <div className="flex justify-between items-start mb-2">
-                  <p className="text-sm font-medium opacity-80">เงินคงเหลือ</p>
+                  <p className="text-sm font-medium opacity-80">เงินใช้ได้คงเหลือ</p>
                   <button 
                     onClick={() => setIsBudgetEditOpen(true)}
                     className="p-2 hover:bg-white/10 rounded-full text-white/50 transition-colors -mr-2 -mt-2"
@@ -93,16 +94,22 @@ export default function Home() {
                   {isLoading ? "..." : formatCurrency(budget?.remaining_spending_pool || 0)}
                 </h2>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <div className="bg-white/10 backdrop-blur-md p-2 rounded-xl border border-white/10">
                     <p className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1">รายรับ</p>
-                    <p className="text-lg font-bold">
+                    <p className="text-sm font-bold">
                       {isLoading ? "..." : formatCurrency(budget?.total_income || 0)}
                     </p>
                   </div>
                   <div className="bg-white/10 backdrop-blur-md p-2 rounded-xl border border-white/10">
+                    <p className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1">กันไว้</p>
+                    <p className="text-sm font-bold">
+                      {isLoading ? "..." : formatCurrency(reservedAmount)}
+                    </p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-md p-2 rounded-xl border border-white/10">
                     <p className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1">ใช้ไปแล้ว</p>
-                    <p className="text-lg font-bold">
+                    <p className="text-sm font-bold">
                       {isLoading ? "..." : formatCurrency(actualSpent)}
                     </p>
                   </div>
@@ -114,7 +121,7 @@ export default function Home() {
             {unpaidFixedCosts.length > 0 && (
               <section className="space-y-2.5">
                 <div className="flex items-center justify-between px-1">
-                  <h3 className="text-sm font-bold text-base-content/40">รายจ่ายคงที่</h3>
+                  <h3 className="text-sm font-bold text-base-content/40">สิ่งที่ต้องจ่าย</h3>
                 </div>
                 <div className="grid gap-2">
                   {unpaidFixedCosts.map((fixed) => (
@@ -154,7 +161,7 @@ export default function Home() {
             {allocatedCategories.length > 0 && (
               <section className="space-y-2.5">
                 <div className="flex items-center justify-between px-1">
-                  <h3 className="text-sm font-bold text-base-content/40">งบประมาณรายหมวดหมู่</h3>
+                  <h3 className="text-sm font-bold text-base-content/40">งบรายหมวด</h3>
                   <span className="text-[10px] font-black text-base-content/40 uppercase tracking-wider">
                     {allocatedCategories.length} หมวดหมู่
                   </span>
@@ -175,13 +182,13 @@ export default function Home() {
             {/* Stats Grid */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-base-100 p-5 rounded-xl border-[0.5px] border-base-300">
-                <p className="text-[10px] text-base-content/40 font-bold uppercase tracking-wider mb-1">รายได้ทั้งหมด</p>
+                <p className="text-[10px] text-base-content/40 font-bold uppercase tracking-wider mb-1">รายรับเดือนนี้</p>
                 <p className="text-xl font-black text-success">
                   {isLoading ? "..." : formatCurrency(budget?.total_income || 0)}
                 </p>
               </div>
               <div className="bg-base-100 p-5 rounded-xl border-[0.5px] border-base-300">
-                <p className="text-[10px] text-base-content/40 font-bold uppercase tracking-wider mb-1">จ่ายไปแล้ว (เงินสด)</p>
+                <p className="text-[10px] text-base-content/40 font-bold uppercase tracking-wider mb-1">จ่ายจริงแล้ว</p>
                 <p className="text-xl font-black text-error">
                   {isLoading ? "..." : formatCurrency(budget?.cash_spent || 0)}
                 </p>

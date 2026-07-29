@@ -41,6 +41,7 @@ export async function PATCH(
           term_months: validatedData.term_months,
           is_paid: validatedData.is_paid,
           include_in_income: validatedData.include_in_income,
+          budget_id: validatedData.budget_id,
         },
       });
 
@@ -49,7 +50,7 @@ export async function PATCH(
       
       if (budgetId) {
         const oldIncluded = existingLoan.include_in_income;
-        const newIncluded = validatedData.include_in_income;
+        const newIncluded = validatedData.include_in_income ?? existingLoan.include_in_income;
 
         if (!oldIncluded && newIncluded) {
           // Toggle ON: Add to budget

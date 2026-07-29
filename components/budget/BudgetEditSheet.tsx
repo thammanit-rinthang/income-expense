@@ -8,7 +8,7 @@ import BottomSheet from "@/components/ui/BottomSheet";
 import { useUpdateMonthlyBudget, MonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { useFixedCosts, useDeleteFixedCost, useToggleFixedCost, FixedCost } from "@/hooks/useFixedCosts";
 import toast from "react-hot-toast";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { Plus, Copy } from "lucide-react";
 import FixedCostSheet from "./FixedCostSheet";
 import FixedCostItem from "./FixedCostItem";
@@ -17,8 +17,11 @@ import CopyFixedCostSheet from "./CopyFixedCostSheet";
 const budgetSchema = z.object({
   id: z.number(),
   total_income: z.coerce.number().min(0, "ยอดรายได้ต้องไม่ติดลบ"),
-  remaining_spending_pool: z.coerce.number().min(0, "งบประมาณคงเหลือต้องไม่ติดลบ"),
+  reserved_amount: z.coerce.number().min(0, "เงินกันไว้ต้องไม่ติดลบ"),
 });
+
+type BudgetFormValues = z.infer<typeof budgetSchema>;
+type BudgetFormInput = z.input<typeof budgetSchema>;
 
 interface BudgetEditSheetProps {
   isOpen: boolean;
@@ -39,28 +42,35 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
   const {
     register,
     handleSubmit,
+    watch,
     reset,
     formState: { errors },
-  } = useForm({
+  } = useForm<BudgetFormInput, unknown, BudgetFormValues>({
     resolver: zodResolver(budgetSchema),
     defaultValues: {
       id: budget?.id || 0,
       total_income: budget?.total_income || 0,
-      remaining_spending_pool: budget?.remaining_spending_pool || 0,
+      reserved_amount: budget?.reserved_amount || 0,
     },
   });
+
+  const watchedIncome = watch("total_income");
+  const watchedReserved = watch("reserved_amount");
+  const projectedUsable = Math.max(Number(watchedIncome || 0) - Number(watchedReserved || 0), 0);
+  const currentSpent = Number(budget?.actual_spent || 0);
+  const projectedRemaining = Math.max(projectedUsable - currentSpent, 0);
 
   useEffect(() => {
     if (budget) {
       reset({
         id: budget.id,
         total_income: budget.total_income,
-        remaining_spending_pool: budget.remaining_spending_pool,
+        reserved_amount: budget.reserved_amount,
       });
     }
   }, [budget, reset]);
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: BudgetFormValues) => {
     updateBudget(data, {
       onSuccess: () => {
         toast.success("อัปเดตงบประมาณแล้ว");
@@ -110,7 +120,7 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
           <div className="grid grid-cols-2 gap-4">
             <div className="form-control">
               <label className="label">
-                <span className="label-text font-bold text-gray-700">รายได้รวม</span>
+                <span className="label-text font-bold text-gray-700">รายรับเดือนนี้</span>
               </label>
               <input
                 {...register("total_income")}
@@ -124,16 +134,31 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
 
             <div className="form-control">
               <label className="label">
-                <span className="label-text font-bold text-gray-700">งบส่วนตัว</span>
+                <span className="label-text font-bold text-gray-700">เงินกันไว้ / เงินออม</span>
               </label>
               <input
-                {...register("remaining_spending_pool")}
+                {...register("reserved_amount")}
                 type="number"
                 step="0.01"
                 placeholder="0.00"
-                className={cn("input input-bordered rounded-xl text-lg font-bold", errors.remaining_spending_pool && "input-error")}
+                className={cn("input input-bordered rounded-xl text-lg font-bold", errors.reserved_amount && "input-error")}
               />
-              {errors.remaining_spending_pool && <span className="text-error text-xs mt-1 px-1">{errors.remaining_spending_pool.message}</span>}
+              {errors.reserved_amount && <span className="text-error text-xs mt-1 px-1">{errors.reserved_amount.message}</span>}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-base-300 bg-base-100 p-4 space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-base-content/50 font-bold">เงินใช้ได้ก่อนรายการจ่าย</span>
+              <span className="font-black text-base-content">{formatCurrency(projectedUsable)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-base-content/50 font-bold">ใช้ไปแล้วเดือนนี้</span>
+              <span className="font-black text-error">{formatCurrency(currentSpent)}</span>
+            </div>
+            <div className="border-t border-base-300 pt-3 flex items-center justify-between">
+              <span className="text-sm text-base-content/60 font-bold">คาดว่าจะเหลือใช้</span>
+              <span className="text-lg font-black text-primary">{formatCurrency(projectedRemaining)}</span>
             </div>
           </div>
 
@@ -142,7 +167,7 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
             disabled={isPending}
             className={cn("btn btn-primary w-full rounded-xl text-lg", isPending && "loading")}
           >
-            {isPending ? "กำลังบันทึก..." : "อัปเดตงบประมาณหลัก"}
+            {isPending ? "กำลังบันทึก..." : "บันทึกงบเดือนนี้"}
           </button>
         </form>
 

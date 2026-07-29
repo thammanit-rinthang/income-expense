@@ -27,14 +27,14 @@ export async function GET(request: Request) {
       }
     });
 
-    const categoriesWithSpent = categories.map((cat: any) => ({
+    const categoriesWithSpent = categories.map((cat) => ({
       ...cat,
-      spent: cat.transactions.reduce((acc: number, t: any) => acc + Number(t.amount), 0),
+      spent: cat.transactions.reduce((acc, t) => acc + Number(t.amount), 0),
       transactions: undefined // Remove detailed transactions from response
     }));
 
     return NextResponse.json(categoriesWithSpent);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
@@ -67,14 +67,25 @@ export async function POST(request: Request) {
         // Update pool based on difference in monthly_budget
         const oldBudget = Number(currentCategory.monthly_budget || 0);
         const newBudget = Number(validatedData.monthly_budget || 0);
-        const diff = newBudget - oldBudget;
+        const spentResult = await tx.transaction.aggregate({
+          where: {
+            budget_id: category.budget_id,
+            category_id: category.id,
+            card_id: null,
+          },
+          _sum: { amount: true },
+        });
+        const spent = Number(spentResult._sum.amount || 0);
+        const oldExcess = Math.max(spent - oldBudget, 0);
+        const newExcess = Math.max(spent - newBudget, 0);
+        const poolAdjustment = -(newBudget - oldBudget) - (newExcess - oldExcess);
 
-        if (diff !== 0) {
+        if (poolAdjustment !== 0) {
           await tx.monthlyBudget.update({
             where: { id: category.budget_id },
             data: {
               remaining_spending_pool: {
-                decrement: diff,
+                [poolAdjustment > 0 ? "increment" : "decrement"]: Math.abs(poolAdjustment),
               },
             },
           });
@@ -134,8 +145,18 @@ export async function DELETE(request: Request) {
         throw new Error("Category not found");
       }
 
-      // Refund allocation to pool
-      const refundAmount = Number(category.monthly_budget || 0);
+      const spentResult = await tx.transaction.aggregate({
+        where: {
+          budget_id: category.budget_id,
+          category_id: category.id,
+          card_id: null,
+        },
+        _sum: { amount: true },
+      });
+
+      // Deleting a category turns its transactions into unallocated spending.
+      // Refund only the unused part of the allocation.
+      const refundAmount = Math.max(Number(category.monthly_budget || 0) - Number(spentResult._sum.amount || 0), 0);
       if (refundAmount !== 0) {
         await tx.monthlyBudget.update({
           where: { id: category.budget_id },

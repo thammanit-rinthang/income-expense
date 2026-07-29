@@ -33,6 +33,8 @@ model MonthlyBudget {
 
   total_income Decimal
 
+  reserved_amount Decimal @default(0)
+
   remaining_spending_pool Decimal
 
   fixed_costs FixedCost[]
