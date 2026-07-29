@@ -11,6 +11,7 @@ export interface MonthlyBudget {
   person_name: string;
   month_year: string;
   total_income: number;
+  reserved_amount: number;
   remaining_spending_pool: number;
   actual_spent?: number;
   cash_spent?: number;

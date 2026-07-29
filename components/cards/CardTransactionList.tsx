@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useCardTransactions, useCardPayments, useCards } from "@/hooks/useCards";
-import { ShoppingBag, ArrowLeft, CheckCircle2, CreditCard } from "lucide-react";
+import { useCardTransactions, useCardPayments, useCards, useDeleteCardPayment } from "@/hooks/useCards";
+import { ShoppingBag, ArrowLeft, CheckCircle2, CreditCard, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
 import "dayjs/locale/th";
@@ -22,6 +22,7 @@ export default function CardTransactionList({ cardId, cardName, onBack }: CardTr
   const { data: cards } = useCards();
   const { data: transactions, isLoading: isTxLoading } = useCardTransactions(cardId);
   const { data: payments, isLoading: isPaymentsLoading } = useCardPayments(cardId);
+  const { mutate: deletePayment, isPending: isDeletingPayment } = useDeleteCardPayment();
 
   const card = cards?.find(c => c.id === cardId);
 
@@ -30,6 +31,11 @@ export default function CardTransactionList({ cardId, cardName, onBack }: CardTr
   const remainingToPay = card ? Number(card.statement_balance) : (totalSpent - totalPaid);
 
   const isLoading = isTxLoading || isPaymentsLoading;
+
+  const handleDeletePayment = (id: number) => {
+    if (!window.confirm("ลบรายการชำระนี้และคืนยอดกลับเข้าบัตร/เงินคงเหลือใช่ไหม?")) return;
+    deletePayment({ id, cardId });
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right duration-300">
@@ -189,6 +195,15 @@ export default function CardTransactionList({ cardId, cardName, onBack }: CardTr
                   <p className="font-black text-emerald-600 text-lg">
                     -{formatCurrency(Number(p.amount))}
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePayment(p.id)}
+                    disabled={isDeletingPayment}
+                    className="btn btn-ghost btn-xs text-error px-1 mt-1 disabled:opacity-40"
+                    aria-label="ลบรายการชำระบัตร"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             ))}

@@ -29,6 +29,7 @@ export async function GET(request: Request) {
           person_name: personName,
           month_year: monthDate,
           total_income: 0,
+          reserved_amount: 0,
           remaining_spending_pool: 0,
         },
       });
@@ -73,18 +74,37 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { id, total_income, remaining_spending_pool } = body;
+    const { id, total_income, reserved_amount } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Budget ID is required" }, { status: 400 });
     }
 
-    const budget = await prisma.monthlyBudget.update({
-      where: { id: parseInt(id) },
-      data: {
-        total_income: total_income !== undefined ? parseFloat(total_income) : undefined,
-        remaining_spending_pool: remaining_spending_pool !== undefined ? parseFloat(remaining_spending_pool) : undefined,
-      },
+    const budget = await prisma.$transaction(async (tx) => {
+      const currentBudget = await tx.monthlyBudget.findUnique({
+        where: { id: parseInt(id) },
+      });
+
+      if (!currentBudget) {
+        throw new Error("Budget not found");
+      }
+
+      const nextIncome = total_income !== undefined ? parseFloat(total_income) : Number(currentBudget.total_income);
+      const nextReserved = reserved_amount !== undefined ? parseFloat(reserved_amount) : Number(currentBudget.reserved_amount);
+      const incomeDelta = nextIncome - Number(currentBudget.total_income);
+      const reservedDelta = nextReserved - Number(currentBudget.reserved_amount);
+      const poolDelta = incomeDelta - reservedDelta;
+
+      return tx.monthlyBudget.update({
+        where: { id: parseInt(id) },
+        data: {
+          total_income: nextIncome,
+          reserved_amount: nextReserved,
+          remaining_spending_pool: {
+            [poolDelta >= 0 ? "increment" : "decrement"]: Math.abs(poolDelta),
+          },
+        },
+      });
     });
 
     return NextResponse.json(budget);

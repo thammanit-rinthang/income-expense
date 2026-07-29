@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
+import { Prisma } from "@/app/generated/prisma/client";
 
 const transactionSchema = z.object({
   budget_id: z.number(),
@@ -12,7 +13,13 @@ const transactionSchema = z.object({
 });
 
 // Helper to calculate excess amount for a cash transaction being applied
-async function calculateExcessToApply(tx: any, budgetId: number, categoryId: number, amount: number) {
+async function calculateExcessToApply(
+  tx: Prisma.TransactionClient,
+  budgetId: number,
+  categoryId: number,
+  amount: number,
+  txIdToExclude?: number
+) {
   const category = await tx.budgetCategory.findUnique({
     where: { id: categoryId },
     select: { monthly_budget: true },
@@ -27,8 +34,10 @@ async function calculateExcessToApply(tx: any, budgetId: number, categoryId: num
   // Get total spent in this category so far (only cash/transfer counts against category budget)
   const spentResult = await tx.transaction.aggregate({
     where: { 
+      budget_id: budgetId,
       category_id: categoryId,
       card_id: null,
+      ...(txIdToExclude ? { id: { not: txIdToExclude } } : {}),
     },
     _sum: { amount: true }
   });
@@ -47,7 +56,13 @@ async function calculateExcessToApply(tx: any, budgetId: number, categoryId: num
 }
 
 // Helper to calculate excess amount to refund when a cash transaction is deleted/reverted
-async function calculateExcessToRevert(tx: any, budgetId: number, categoryId: number, amount: number, txIdToExclude: number) {
+async function calculateExcessToRevert(
+  tx: Prisma.TransactionClient,
+  budgetId: number,
+  categoryId: number,
+  amount: number,
+  txIdToExclude: number
+) {
   const category = await tx.budgetCategory.findUnique({
     where: { id: categoryId },
     select: { monthly_budget: true },
@@ -62,6 +77,7 @@ async function calculateExcessToRevert(tx: any, budgetId: number, categoryId: nu
   // Get total spent in this category *excluding* the transaction being reverted
   const spentResult = await tx.transaction.aggregate({
     where: { 
+      budget_id: budgetId,
       category_id: categoryId,
       card_id: null,
       id: { not: txIdToExclude }
@@ -100,7 +116,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(transactions);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
@@ -111,18 +127,7 @@ export async function POST(request: Request) {
     const validatedData = transactionSchema.parse(body);
 
     const result = await prisma.$transaction(async (tx) => {
-      // Create the transaction
-      const transaction = await tx.transaction.create({
-        data: {
-          budget_id: validatedData.budget_id,
-          category_id: validatedData.category_id,
-          card_id: validatedData.card_id,
-          amount: validatedData.amount,
-          description: validatedData.description,
-          created_at: validatedData.created_at ? new Date(validatedData.created_at) : undefined,
-        },
-      });
-
+      let deductAmount = 0;
       if (validatedData.card_id) {
         // Path B: Credit Card
         await tx.creditCard.update({
@@ -135,21 +140,34 @@ export async function POST(request: Request) {
         });
       } else {
         // Path A: Cash/Transfer (card_id is null)
-        let deductAmount = validatedData.amount;
+        deductAmount = validatedData.amount;
         if (validatedData.category_id) {
           deductAmount = await calculateExcessToApply(tx, validatedData.budget_id, validatedData.category_id, validatedData.amount);
         }
+      }
 
-        if (deductAmount > 0) {
-          await tx.monthlyBudget.update({
-            where: { id: validatedData.budget_id },
-            data: {
-              remaining_spending_pool: {
-                decrement: deductAmount,
-              },
+      // Create the transaction after calculating category excess, so the new row
+      // is not accidentally counted as previous spending.
+      const transaction = await tx.transaction.create({
+        data: {
+          budget_id: validatedData.budget_id,
+          category_id: validatedData.category_id,
+          card_id: validatedData.card_id,
+          amount: validatedData.amount,
+          description: validatedData.description,
+          created_at: validatedData.created_at ? new Date(validatedData.created_at) : undefined,
+        },
+      });
+
+      if (!validatedData.card_id && deductAmount > 0) {
+        await tx.monthlyBudget.update({
+          where: { id: validatedData.budget_id },
+          data: {
+            remaining_spending_pool: {
+              decrement: deductAmount,
             },
-          });
-        }
+          },
+        });
       }
 
       return transaction;
@@ -229,7 +247,7 @@ export async function PATCH(request: Request) {
         // Apply new Cash/Transfer
         let deductAmount = Number(updatedTx.amount);
         if (updatedTx.category_id) {
-          deductAmount = await calculateExcessToApply(tx, updatedTx.budget_id, updatedTx.category_id, Number(updatedTx.amount));
+          deductAmount = await calculateExcessToApply(tx, updatedTx.budget_id, updatedTx.category_id, Number(updatedTx.amount), updatedTx.id);
         }
 
         if (deductAmount > 0) {
