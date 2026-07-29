@@ -12,6 +12,8 @@ export interface MonthlyBudget {
   month_year: string;
   total_income: number;
   remaining_spending_pool: number;
+  actual_spent?: number;
+  cash_spent?: number;
 }
 
 export function useMonthlyBudget() {

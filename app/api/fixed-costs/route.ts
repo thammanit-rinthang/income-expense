@@ -80,14 +80,26 @@ export async function PATCH(request: Request) {
         },
       });
 
-      // If is_paid was toggled, update the budget's remaining pool
-      if (is_paid !== undefined && is_paid !== currentFixedCost.is_paid) {
-        const amountToUpdate = updatedFixedCost.amount;
+      const wasPaid = currentFixedCost.is_paid;
+      const willBePaid = updatedFixedCost.is_paid;
+      const oldAmount = Number(currentFixedCost.amount);
+      const newAmount = Number(updatedFixedCost.amount);
+      let poolAdjustment = 0;
+
+      if (!wasPaid && willBePaid) {
+        poolAdjustment = -newAmount;
+      } else if (wasPaid && !willBePaid) {
+        poolAdjustment = oldAmount;
+      } else if (wasPaid && willBePaid && oldAmount !== newAmount) {
+        poolAdjustment = oldAmount - newAmount;
+      }
+
+      if (poolAdjustment !== 0) {
         await tx.monthlyBudget.update({
           where: { id: updatedFixedCost.budget_id },
           data: {
             remaining_spending_pool: {
-              [is_paid ? "decrement" : "increment"]: amountToUpdate,
+              [poolAdjustment > 0 ? "increment" : "decrement"]: Math.abs(poolAdjustment),
             },
           },
         });
