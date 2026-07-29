@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import dayjs from "dayjs";
 
+async function ensureReservedAmountColumn() {
+  await prisma.$executeRawUnsafe(`
+    ALTER TABLE "monthly_budgets"
+    ADD COLUMN IF NOT EXISTS "reserved_amount" DECIMAL(65,30) NOT NULL DEFAULT 0
+  `);
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const personName = searchParams.get("person_name");
@@ -15,6 +22,8 @@ export async function GET(request: Request) {
   const monthDate = new Date(Date.UTC(parsed.year(), parsed.month(), 1));
 
   try {
+    await ensureReservedAmountColumn();
+
     let budget = await prisma.monthlyBudget.findFirst({
       where: {
         person_name: personName,
@@ -73,6 +82,8 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    await ensureReservedAmountColumn();
+
     const body = await request.json();
     const { id, total_income, reserved_amount } = body;
 
