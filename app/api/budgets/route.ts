@@ -34,7 +34,36 @@ export async function GET(request: Request) {
       });
     }
 
-    return NextResponse.json(budget);
+    const [cashTransactions, paidFixedCosts, loanPayments, cardPayments] = await Promise.all([
+      prisma.transaction.aggregate({
+        where: { budget_id: budget.id, card_id: null },
+        _sum: { amount: true },
+      }),
+      prisma.fixedCost.aggregate({
+        where: { budget_id: budget.id, is_paid: true },
+        _sum: { amount: true },
+      }),
+      prisma.loanPayment.aggregate({
+        where: { budget_id: budget.id },
+        _sum: { amount: true },
+      }),
+      prisma.cardPayment.aggregate({
+        where: { budget_id: budget.id },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const cashSpent =
+      Number(cashTransactions._sum.amount || 0) +
+      Number(paidFixedCosts._sum.amount || 0) +
+      Number(loanPayments._sum.amount || 0) +
+      Number(cardPayments._sum.amount || 0);
+
+    return NextResponse.json({
+      ...budget,
+      actual_spent: cashSpent,
+      cash_spent: cashSpent,
+    });
   } catch (error) {
     console.error("Fetch budget error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

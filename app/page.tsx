@@ -45,6 +45,7 @@ export default function Home() {
 
   const unpaidFixedCosts = fixedCosts?.filter(f => !f.is_paid) || [];
   const allocatedCategories = categories?.filter(c => c.monthly_budget && Number(c.monthly_budget) > 0) || [];
+  const actualSpent = Number(budget?.actual_spent || 0);
 
   const handleToggleFixedCost = (id: number, is_paid: boolean) => {
     toggleFixedCost({ id, is_paid }, {
@@ -102,7 +103,7 @@ export default function Home() {
                   <div className="bg-white/10 backdrop-blur-md p-2 rounded-xl border border-white/10">
                     <p className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1">ใช้ไปแล้ว</p>
                     <p className="text-lg font-bold">
-                      {isLoading ? "..." : formatCurrency((Number(budget?.total_income) || 0) - (Number(budget?.remaining_spending_pool) || 0))}
+                      {isLoading ? "..." : formatCurrency(actualSpent)}
                     </p>
                   </div>
                 </div>
@@ -182,7 +183,7 @@ export default function Home() {
               <div className="bg-base-100 p-5 rounded-xl border-[0.5px] border-base-300">
                 <p className="text-[10px] text-base-content/40 font-bold uppercase tracking-wider mb-1">จ่ายไปแล้ว (เงินสด)</p>
                 <p className="text-xl font-black text-error">
-                  {isLoading ? "..." : formatCurrency((Number(budget?.total_income) || 0) - (Number(budget?.remaining_spending_pool) || 0))}
+                  {isLoading ? "..." : formatCurrency(budget?.cash_spent || 0)}
                 </p>
               </div>
             </div>

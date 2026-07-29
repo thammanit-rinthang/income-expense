@@ -28,6 +28,17 @@ export async function POST(req: NextRequest) {
         },
       });
 
+      if (budget_id) {
+        await tx.monthlyBudget.update({
+          where: { id: parseInt(budget_id) },
+          data: {
+            remaining_spending_pool: {
+              decrement: parseFloat(amount),
+            },
+          },
+        });
+      }
+
       return { payment, updatedCard };
     });
 
