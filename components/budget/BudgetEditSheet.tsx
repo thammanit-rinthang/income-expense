@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import BottomSheet from "@/components/ui/BottomSheet";
@@ -42,7 +42,7 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     reset,
     formState: { errors },
   } = useForm<BudgetFormInput, unknown, BudgetFormValues>({
@@ -54,11 +54,8 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
     },
   });
 
-  const watchedIncome = watch("total_income");
-  const watchedReserved = watch("reserved_amount");
-  const projectedUsable = Math.max(Number(watchedIncome || 0) - Number(watchedReserved || 0), 0);
-  const currentSpent = Number(budget?.actual_spent || 0);
-  const projectedRemaining = Math.max(projectedUsable - currentSpent, 0);
+  const watchedIncome = useWatch({ control, name: "total_income" });
+  const watchedReserved = useWatch({ control, name: "reserved_amount" });
 
   useEffect(() => {
     if (budget) {
@@ -108,6 +105,12 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
 
   if (!budget) return null;
 
+  const projectedAvailable =
+    Number(budget.remaining_spending_pool) +
+    (Number(watchedIncome || 0) - Number(budget.total_income)) -
+    (Number(watchedReserved || 0) - Number(budget.reserved_amount));
+  const actualSpent = Number(budget.actual_spent || 0);
+
   return (
     <BottomSheet
       id="budget-edit-sheet"
@@ -120,7 +123,7 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
           <div className="grid grid-cols-2 gap-4">
             <div className="form-control">
               <label className="label">
-                <span className="label-text font-bold text-gray-700">รายรับเดือนนี้</span>
+                <span className="label-text font-bold text-gray-700">รายรับรวม</span>
               </label>
               <input
                 {...register("total_income")}
@@ -134,7 +137,7 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
 
             <div className="form-control">
               <label className="label">
-                <span className="label-text font-bold text-gray-700">เงินกันไว้ / เงินออม</span>
+                <span className="label-text font-bold text-gray-700">เงินกันไว้</span>
               </label>
               <input
                 {...register("reserved_amount")}
@@ -147,18 +150,18 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
             </div>
           </div>
 
-          <div className="rounded-xl border border-base-300 bg-base-100 p-4 space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-base-content/50 font-bold">เงินใช้ได้ก่อนรายการจ่าย</span>
-              <span className="font-black text-base-content">{formatCurrency(projectedUsable)}</span>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="finance-card p-3">
+              <p className="finance-label">เหลือใช้ตอนนี้</p>
+              <p className="text-sm font-black text-primary">{formatCurrency(projectedAvailable)}</p>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-base-content/50 font-bold">ใช้ไปแล้วเดือนนี้</span>
-              <span className="font-black text-error">{formatCurrency(currentSpent)}</span>
+            <div className="finance-card p-3">
+              <p className="finance-label">ใช้ไปแล้ว</p>
+              <p className="text-sm font-black text-error">{formatCurrency(actualSpent)}</p>
             </div>
-            <div className="border-t border-base-300 pt-3 flex items-center justify-between">
-              <span className="text-sm text-base-content/60 font-bold">คาดว่าจะเหลือใช้</span>
-              <span className="text-lg font-black text-primary">{formatCurrency(projectedRemaining)}</span>
+            <div className="finance-card p-3">
+              <p className="finance-label">กันไว้แล้ว</p>
+              <p className="text-sm font-black text-base-content">{formatCurrency(budget.reserved_amount)}</p>
             </div>
           </div>
 
@@ -175,7 +178,7 @@ export default function BudgetEditSheet({ isOpen, onClose, budget }: BudgetEditS
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-gray-800">รายการค่าใช้จ่ายคงที่</h3>
+            <h3 className="text-lg font-bold text-gray-800">สิ่งที่ต้องจ่าย</h3>
             <div className="flex gap-1">
               <button 
                 type="button"

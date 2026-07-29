@@ -11,33 +11,34 @@ export default function CombinedDashboard() {
   if (!data) return null;
 
   const { summary, bon, ray } = data;
+
   const combinedIncome = Number(summary.combined_income || 0);
-  const bonSpentPercent = combinedIncome > 0 ? Math.min((summary.person_a_spent / combinedIncome) * 100, 100) : 0;
-  const raySpentPercent = combinedIncome > 0 ? Math.min((summary.person_b_spent / combinedIncome) * 100, 100) : 0;
+  const bonPercent = combinedIncome > 0 ? Math.min((Number(summary.person_a_spent) / combinedIncome) * 100, 100) : 0;
+  const rayPercent = combinedIncome > 0 ? Math.min((Number(summary.person_b_spent) / combinedIncome) * 100, 100) : 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Combined Stats */}
       <div className="grid grid-cols-1 gap-4">
-        <div className="bg-primary p-6 rounded-xl text-primary-content">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 mb-1">เงินใช้ได้รวม</p>
-          <p className="text-4xl font-black">
+        <div className="rounded-[1.5rem] bg-primary p-6 text-primary-content shadow-xl shadow-primary/15">
+          <p className="text-sm font-bold opacity-75 mb-1">เงินใช้ได้รวม</p>
+          <p className="finance-display font-black">
             {formatCurrency(Number(bon.remaining) + Number(ray.remaining))}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white p-5 rounded-xl border border-gray-100 flex items-center gap-3">
+          <div className="finance-card p-5 flex items-center gap-3">
             <div className="p-2 bg-success/10 text-success rounded-xl"><Wallet size={20} /></div>
             <div>
-              <p className="text-[10px] text-gray-400 font-bold uppercase">รายรับรวม</p>
+              <p className="finance-label">รายรับรวม</p>
               <p className="font-black text-gray-900">{formatCurrency(summary.combined_income)}</p>
             </div>
           </div>
-          <div className="bg-white p-5 rounded-xl border border-gray-100 flex items-center gap-3">
+          <div className="finance-card p-5 flex items-center gap-3">
             <div className="p-2 bg-warning/10 text-warning rounded-xl"><Landmark size={20} /></div>
             <div>
-              <p className="text-[10px] text-gray-400 font-bold uppercase">จ่ายประจำแล้ว</p>
+              <p className="finance-label">จ่ายประจำแล้ว</p>
               <p className="font-black text-gray-900">{formatCurrency(summary.combined_fixed)}</p>
             </div>
           </div>
@@ -45,10 +46,10 @@ export default function CombinedDashboard() {
       </div>
 
       {/* Comparison Chart (Simple Bar) */}
-      <div className="bg-white p-6 rounded-xl border border-gray-100 space-y-6">
+      <div className="finance-card p-6 space-y-6">
         <div className="flex items-center gap-2 px-1">
           <ReceiptText size={20} className="text-primary" />
-          <h3 className="font-black text-gray-900 uppercase tracking-tight">เทียบยอดใช้จริง</h3>
+          <h3 className="font-black text-gray-900 tracking-tight">เทียบยอดใช้จริง</h3>
         </div>
 
         <div className="space-y-6">
@@ -61,7 +62,7 @@ export default function CombinedDashboard() {
             <div className="w-full bg-gray-50 rounded-xl h-4 overflow-hidden border border-gray-100 p-0.5">
               <div
                 className="h-full bg-primary rounded-xl transition-all duration-1000"
-                style={{ width: `${bonSpentPercent}%` }}
+                style={{ width: `${bonPercent}%` }}
               />
             </div>
           </div>
@@ -75,7 +76,7 @@ export default function CombinedDashboard() {
             <div className="w-full bg-gray-50 rounded-xl h-4 overflow-hidden border border-gray-100 p-0.5">
               <div
                 className="h-full bg-secondary rounded-xl transition-all duration-1000"
-                style={{ width: `${raySpentPercent}%` }}
+                style={{ width: `${rayPercent}%` }}
               />
             </div>
           </div>
@@ -84,12 +85,12 @@ export default function CombinedDashboard() {
 
       {/* Individual Breakdown */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
-          <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Bon เหลือใช้</p>
+        <div className="finance-card bg-gray-50 p-4 text-center">
+          <p className="finance-label mb-1">Bon เหลือใช้</p>
           <p className="font-black text-primary">{formatCurrency(bon.remaining)}</p>
         </div>
-        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
-          <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Ray เหลือใช้</p>
+        <div className="finance-card bg-gray-50 p-4 text-center">
+          <p className="finance-label mb-1">Ray เหลือใช้</p>
           <p className="font-black text-secondary">{formatCurrency(ray.remaining)}</p>
         </div>
       </div>

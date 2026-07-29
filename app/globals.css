@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../tokens.css";
 @plugin "daisyui";
 
 /* ตั้งค่า Theme สำหรับ daisyUI v5 */
@@ -16,8 +17,85 @@
 }
 
 @layer base {
+  html,
+  body {
+    overflow-x: clip;
+  }
+
   body {
     /* ใช้สีจาก theme ที่เราตั้งไว้ */
     @apply text-neutral bg-base-200;
+    font-family: var(--font-body);
+    background:
+      radial-gradient(circle at top left, var(--color-accent-soft), transparent 32rem),
+      var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  *:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      scroll-behavior: auto !important;
+      transition-duration: 120ms !important;
+    }
+  }
+}
+
+@layer components {
+  .finance-shell {
+    width: min(100%, 32rem);
+    margin-inline: auto;
+  }
+
+  .finance-panel {
+    background: color-mix(in oklch, var(--color-card) 92%, var(--color-accent-soft));
+    border: var(--rule-thin);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 20px 50px color-mix(in oklch, var(--color-accent) 12%, transparent);
+  }
+
+  .finance-card {
+    background: var(--color-card);
+    border: var(--rule-thin);
+    border-radius: var(--radius-lg);
+  }
+
+  .finance-chip {
+    background: var(--color-card-muted);
+    border: var(--rule-thin);
+    border-radius: 999px;
+  }
+
+  .finance-action {
+    transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-med) var(--ease-out), color var(--dur-med) var(--ease-out);
+  }
+
+  .finance-action:hover {
+    transform: translateY(-1px);
+  }
+
+  .finance-action:active {
+    transform: translateY(0);
+  }
+
+  .finance-label {
+    color: var(--color-ink-muted);
+    font-size: var(--text-xs);
+    font-weight: 700;
+  }
+
+  .finance-display {
+    font-family: var(--font-display);
+    font-size: var(--text-display);
+    line-height: 0.95;
+    letter-spacing: 0;
+    overflow-wrap: anywhere;
   }
 }

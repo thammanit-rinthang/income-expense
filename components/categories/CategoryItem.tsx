@@ -18,7 +18,7 @@ export default function CategoryItem({ name, spent, budget, onClick }: CategoryI
   return (
     <div 
       onClick={onClick}
-      className="bg-base-100 p-4 rounded-xl border-[0.5px] border-base-300 space-y-3 active:scale-95 transition-transform cursor-pointer"
+      className="finance-card p-4 space-y-3 active:scale-[0.98] transition-transform cursor-pointer"
     >
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-4">
@@ -26,9 +26,9 @@ export default function CategoryItem({ name, spent, budget, onClick }: CategoryI
             <Receipt size={20} />
           </div>
           <div>
-            <h4 className="text-base font-medium text-base-content">{name}</h4>
+            <h4 className="text-base font-bold text-base-content">{name}</h4>
             <p className="text-sm font-normal text-base-content/50">
-              {budget ? `Budget: ${formatCurrency(budget)}` : "No budget set"}
+              {budget ? `ตั้งไว้ ${formatCurrency(budget)}` : "ยังไม่ได้ตั้งงบ"}
             </p>
           </div>
         </div>
@@ -38,14 +38,14 @@ export default function CategoryItem({ name, spent, budget, onClick }: CategoryI
           </p>
           {budget && (
             <p className="text-[10px] text-gray-400">
-              {((spent / budget) * 100).toFixed(0)}% used
+              ใช้ไป {((spent / budget) * 100).toFixed(0)}%
             </p>
           )}
         </div>
       </div>
 
       {budget && (
-        <div className="w-full bg-gray-100 rounded-xl h-2 overflow-hidden">
+        <div className="w-full bg-base-200 rounded-xl h-2 overflow-hidden">
           <div
             className={cn(
               "h-full rounded-xl transition-all duration-500",

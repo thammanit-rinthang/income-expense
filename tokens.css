@@ -1,0 +1,52 @@
+/* Hallmark · macrostructure: Workbench · tone: utilitarian · anchor hue: warm-rose
+ * Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4
+ */
+:root {
+  --font-display: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --color-paper: oklch(98.5% 0.012 20);
+  --color-paper-soft: oklch(96.2% 0.018 20);
+  --color-card: oklch(100% 0 0);
+  --color-card-muted: oklch(97.5% 0.012 20);
+  --color-ink: oklch(20% 0.035 260);
+  --color-ink-muted: oklch(48% 0.035 260);
+  --color-ink-faint: oklch(66% 0.025 260);
+  --color-rule: oklch(90% 0.018 20);
+  --color-accent: oklch(58% 0.18 10);
+  --color-accent-strong: oklch(49% 0.2 8);
+  --color-accent-soft: oklch(94% 0.04 12);
+  --color-positive: oklch(65% 0.16 165);
+  --color-warning: oklch(72% 0.15 75);
+  --color-danger: oklch(63% 0.2 18);
+  --color-purple: oklch(58% 0.16 305);
+  --color-focus: oklch(62% 0.19 10);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-display: clamp(2.6rem, 12vw, 4.75rem);
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --rule-thin: 1px solid var(--color-rule);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 120ms;
+  --dur-med: 220ms;
+}

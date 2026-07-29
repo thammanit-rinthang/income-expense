@@ -1,14 +1,14 @@
 "use client";
 
 import { useTransactions, groupTransactionsByDate } from "@/hooks/useTransactions";
-import { formatCurrency } from "@/lib/utils";
+import type { Transaction } from "@/hooks/useTransactions";
+import { cn, formatCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
-import { Receipt, CreditCard } from "lucide-react";
 import { useState } from "react";
 import TransactionSheet from "./TransactionSheet";
 
 export default function RecentTransactions({ budgetId }: { budgetId: number }) {
-  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   
   const { data: transactions, isLoading } = useTransactions(budgetId);
@@ -17,13 +17,13 @@ export default function RecentTransactions({ budgetId }: { budgetId: number }) {
 
   if (!transactions || transactions.length === 0) {
     return (
-      <div className="p-8 text-center text-gray-400">
-        <p className="text-sm italic">ยังไม่มีรายการในเดือนนี้</p>
+      <div className="finance-card p-8 text-center text-gray-400">
+        <p className="text-sm">ยังไม่มีรายการในเดือนนี้</p>
       </div>
     );
   }
 
-  const handleEdit = (t: any) => {
+  const handleEdit = (t: Transaction) => {
     setSelectedTransaction(t);
     setIsSheetOpen(true);
   };
@@ -46,7 +46,7 @@ export default function RecentTransactions({ budgetId }: { budgetId: number }) {
                 <div 
                   key={t.id} 
                   onClick={() => handleEdit(t)}
-                  className="flex items-center justify-between p-4 bg-base-100 rounded-xl border-[0.5px] border-base-300 hover:bg-base-200/50 transition-colors cursor-pointer active:scale-[0.98]"
+                  className="finance-card finance-action flex items-center justify-between p-4 hover:bg-base-200/50 cursor-pointer active:scale-[0.98]"
                 >
                   <div className="flex items-center gap-4">
                     <div className={cn(
@@ -86,5 +86,3 @@ export default function RecentTransactions({ budgetId }: { budgetId: number }) {
     </div>
   );
 }
-
-import { cn } from "@/lib/utils";

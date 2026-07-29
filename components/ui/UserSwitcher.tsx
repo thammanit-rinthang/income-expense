@@ -1,20 +1,19 @@
 "use client";
 
 import { useUserStore } from "@/store/userStore";
-import { User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function UserSwitcher() {
   const { currentUser, setCurrentUser } = useUserStore();
 
   return (
-    <div className="flex items-center gap-2 bg-base-200 p-1 rounded-xl">
+    <div className="finance-chip flex items-center gap-1 p-1">
       <button
         onClick={() => setCurrentUser("Bon")}
         className={cn(
-          "px-4 py-1.5 rounded-xl text-sm font-medium transition-all",
+          "px-3 sm:px-4 py-1.5 rounded-full text-sm font-bold transition-all finance-action",
           currentUser === "Bon"
-            ? "bg-white text-primary"
+            ? "bg-white text-primary shadow-sm"
             : "text-gray-500 hover:text-gray-700"
         )}
       >
@@ -23,9 +22,9 @@ export default function UserSwitcher() {
       <button
         onClick={() => setCurrentUser("Ray")}
         className={cn(
-          "px-4 py-1.5 rounded-xl text-sm font-medium transition-all",
+          "px-3 sm:px-4 py-1.5 rounded-full text-sm font-bold transition-all finance-action",
           currentUser === "Ray"
-            ? "bg-white text-primary"
+            ? "bg-white text-primary shadow-sm"
             : "text-gray-500 hover:text-gray-700"
         )}
       >

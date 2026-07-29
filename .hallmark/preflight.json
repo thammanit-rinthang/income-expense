@@ -1,0 +1,8 @@
+{
+  "date": "2026-07-29",
+  "framework": "Next.js 16 App Router",
+  "styling": "Tailwind CSS v4 with daisyUI",
+  "palette": "Existing pink daisyUI theme preserved and extended with Hallmark finance tokens",
+  "motion": "motion-cut; no dedicated motion library detected",
+  "spacing": "4pt token scale introduced in tokens.css"
+}

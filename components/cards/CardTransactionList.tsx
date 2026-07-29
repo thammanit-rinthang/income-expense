@@ -32,9 +32,10 @@ export default function CardTransactionList({ cardId, cardName, onBack }: CardTr
 
   const isLoading = isTxLoading || isPaymentsLoading;
 
-  const handleDeletePayment = (id: number) => {
-    if (!window.confirm("ลบรายการชำระนี้และคืนยอดกลับเข้าบัตร/เงินคงเหลือใช่ไหม?")) return;
-    deletePayment({ id, cardId });
+  const handleDeletePayment = (paymentId: number) => {
+    if (window.confirm("ลบรายการชำระนี้และคืนยอดกลับเข้าบัตร/เงินคงเหลือใช่ไหม?")) {
+      deletePayment({ id: paymentId, cardId });
+    }
   };
 
   return (
@@ -191,19 +192,21 @@ export default function CardTransactionList({ cardId, cardName, onBack }: CardTr
                     </span>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
                 <div className="text-right">
                   <p className="font-black text-emerald-600 text-lg">
                     -{formatCurrency(Number(p.amount))}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => handleDeletePayment(p.id)}
-                    disabled={isDeletingPayment}
-                    className="btn btn-ghost btn-xs text-error px-1 mt-1 disabled:opacity-40"
-                    aria-label="ลบรายการชำระบัตร"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDeletePayment(p.id)}
+                  disabled={isDeletingPayment}
+                  aria-label="ลบรายการชำระบัตร"
+                  className="btn btn-ghost btn-xs btn-circle text-base-content/35 hover:text-error"
+                >
+                  <Trash2 size={15} />
+                </button>
                 </div>
               </div>
             ))}

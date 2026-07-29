@@ -33,10 +33,10 @@ export default function BottomNav() {
 
       <div className="fixed bottom-0 left-0 right-0 z-50">
         {/* Blur backdrop that bleeds into the screen edge */}
-        <div className="absolute inset-0 bg-white/70 backdrop-blur-2xl border-t border-gray-100/80" />
+        <div className="absolute inset-0 bg-white/82 backdrop-blur-2xl border-t border-base-300/80" />
 
         <nav
-          className="relative max-w-md mx-auto flex items-end justify-around px-2 pt-2"
+          className="finance-shell relative flex items-end justify-around px-2 pt-2"
           style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom))" }}
         >
           {tabs.map((tab) => {
@@ -57,7 +57,7 @@ export default function BottomNav() {
                   <span
                     className={cn(
                       "w-14 h-14 rounded-2xl flex items-center justify-center",
-                      "bg-gradient-to-br from-primary to-primary/80",
+                      "bg-primary",
                       "ring-4 ring-primary/20",
                       "transition-all duration-200",
                       "group-hover:scale-105 group-hover:ring-primary/30 group-hover:rounded-xl",
@@ -107,7 +107,7 @@ export default function BottomNav() {
                 {/* Label — always rendered to keep layout stable */}
                 <span
                   className={cn(
-                    "text-[10px] leading-none transition-all duration-300 font-medium",
+                    "text-[10px] leading-none transition-all duration-300 font-semibold",
                     isActive
                       ? "text-primary font-semibold opacity-100"
                       : "text-gray-400 opacity-70 group-hover:opacity-100 group-hover:text-gray-500"
