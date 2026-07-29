@@ -49,10 +49,18 @@ export function useCardTransactions(cardId: number | null, month?: string) {
 export interface CardPayment {
   id: number;
   card_id: number;
+  budget_id?: number | null;
   amount: number;
   note: string;
   paid_at: string;
 }
+
+type SaveCardInput = Partial<CreditCard> & {
+  id?: number;
+  name: string;
+  credit_limit: number;
+  statement_balance?: number;
+};
 
 export function useCardPayments(cardId: number | null, month?: string) {
   return useQuery({
@@ -72,7 +80,7 @@ export function useCardPayments(cardId: number | null, month?: string) {
 export function useSaveCard() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (card: any) => {
+    mutationFn: async (card: SaveCardInput) => {
       if (card.id) {
         const { data } = await axios.patch(`/api/cards/${card.id}`, card);
         return data;
@@ -115,6 +123,23 @@ export function useMakeCardPayment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["credit-cards"] });
       queryClient.invalidateQueries({ queryKey: ["monthly-budget"] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-summary"] });
+    },
+  });
+}
+
+export function useDeleteCardPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, cardId }: { id: number; cardId: number }) => {
+      await axios.delete(`/api/cards/payments?id=${id}`);
+      return { cardId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["credit-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["card-payments", data.cardId] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-budget"] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-summary"] });
     },
   });
 }
