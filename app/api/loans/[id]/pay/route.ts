@@ -52,3 +52,74 @@ export async function POST(
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const loanId = parseInt(id);
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const paymentIdParam = searchParams.get("paymentId");
+
+    const result = await prisma.$transaction(async (tx) => {
+      let payment;
+      if (paymentIdParam) {
+        payment = await tx.loanPayment.findUnique({
+          where: { id: parseInt(paymentIdParam) },
+          include: { loan: true },
+        });
+      } else {
+        // Delete latest payment for this loan
+        payment = await tx.loanPayment.findFirst({
+          where: { loan_id: loanId },
+          orderBy: { paid_at: "desc" },
+          include: { loan: true },
+        });
+      }
+
+      if (!payment) {
+        throw new Error("PAYMENT_NOT_FOUND");
+      }
+
+      // Refund to budget
+      if (payment.budget_id) {
+        await tx.monthlyBudget.update({
+          where: { id: payment.budget_id },
+          data: {
+            remaining_spending_pool: {
+              increment: payment.amount,
+            },
+          },
+        });
+      }
+
+      await tx.loanPayment.delete({
+        where: { id: payment.id },
+      });
+
+      const remainingPayments = await tx.loanPayment.findMany({
+        where: { loan_id: loanId },
+      });
+      const totalPaid = remainingPayments.reduce((acc, p) => acc + Number(p.amount), 0);
+      if (totalPaid < Number(payment.loan.principal)) {
+        await tx.loan.update({
+          where: { id: loanId },
+          data: { is_paid: false },
+        });
+      }
+
+      return { success: true, paymentId: payment.id };
+    });
+
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof Error && error.message === "PAYMENT_NOT_FOUND") {
+      return NextResponse.json({ error: "Payment not found" }, { status: 404 });
+    }
+    console.error("Delete loan payment error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}

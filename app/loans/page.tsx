@@ -65,12 +65,14 @@ export default function LoansPage() {
             {loans?.map((loan) => (
               <LoanItem
                 key={loan.id}
+                id={loan.id}
                 name={loan.name}
                 principal={Number(loan.principal)}
                 interestRate={Number(loan.interest_rate)}
                 termMonths={loan.term_months}
                 startDate={loan.start_date}
                 paid={loan.payments.reduce((acc, p) => acc + Number(p.amount), 0)}
+                payments={loan.payments}
                 onPay={() => setPayLoan(loan)}
                 onEdit={() => handleEdit(loan)}
                 onDelete={() => handleDelete(loan.id)}

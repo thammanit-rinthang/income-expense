@@ -20,7 +20,9 @@ export async function GET(request: Request) {
     const loans = await prisma.loan.findMany({
       where: personName ? { person_name: personName } : {},
       include: {
-        payments: true,
+        payments: {
+          orderBy: { paid_at: "asc" },
+        },
       },
       orderBy: { created_at: "desc" },
     });

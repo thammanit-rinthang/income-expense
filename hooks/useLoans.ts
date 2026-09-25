@@ -3,6 +3,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
+export interface LoanPayment {
+  id: number;
+  loan_id: number;
+  budget_id: number;
+  amount: number;
+  note: string;
+  paid_at: string | Date;
+}
+
 export interface Loan {
   id: number;
   name: string;
@@ -13,7 +22,7 @@ export interface Loan {
   include_in_income: boolean;
   budget_id?: number;
   start_date: string | Date;
-  payments: Array<{ amount: number }>;
+  payments: LoanPayment[];
 }
 
 export function useLoans(personName: string) {
@@ -76,6 +85,28 @@ export function usePayLoan() {
     mutationFn: async ({ loanId, ...data }: any) => {
       const { data: result } = await axios.post(`/api/loans/${loanId}/pay`, data);
       return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-budget"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-summary"] });
+    },
+  });
+}
+
+export function useDeleteLoanPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ paymentId, loanId }: { paymentId?: number; loanId?: number }) => {
+      if (paymentId) {
+        const { data } = await axios.delete(`/api/loans/payments?id=${paymentId}`);
+        return data;
+      } else if (loanId) {
+        const { data } = await axios.delete(`/api/loans/${loanId}/pay`);
+        return data;
+      }
+      throw new Error("paymentId or loanId is required");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loans"] });

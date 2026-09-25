@@ -2,33 +2,40 @@
 
 import { formatCurrency, calculateMonthlyPayment, getMonthsDifference, generateLoanSchedule } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { ReceiptRussianRuble, Pencil, Trash2, CalendarDays, Timer, ChevronDown, ChevronUp } from "lucide-react";
+import { ReceiptRussianRuble, Pencil, Trash2, CalendarDays, Timer, RotateCcw } from "lucide-react";
 import { useState } from "react";
+import { useDeleteLoanPayment, LoanPayment } from "@/hooks/useLoans";
+import { toast } from "react-hot-toast";
 
 interface LoanItemProps {
+  id?: number;
   name: string;
   principal: number;
   interestRate: number;
   termMonths: number;
   startDate: string | Date;
   paid: number;
+  payments?: LoanPayment[];
   onPay: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
 export default function LoanItem({ 
+  id,
   name, 
   principal, 
   interestRate, 
   termMonths, 
-  startDate,
+  startDate, 
   paid, 
+  payments,
   onPay, 
   onEdit, 
   onDelete 
 }: LoanItemProps) {
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const deleteLoanPayment = useDeleteLoanPayment();
   const percentage = Math.min((paid / principal) * 100, 100);
   const remaining = principal - paid;
   
@@ -40,6 +47,31 @@ export default function LoanItem({
   const recalculatedMonthlyPayment = remaining > 0 ? calculateMonthlyPayment(remaining, interestRate, monthsLeft) : 0;
 
   const schedule = generateLoanSchedule(principal, interestRate, termMonths, paid, startDate);
+
+  const handleToggleOrRevert = (item: any, idx: number) => {
+    if (!item.isPaid) {
+      onPay();
+    } else {
+      const targetPayment = (payments && payments[idx]) ? payments[idx] : payments?.[payments.length - 1];
+      const confirmText = targetPayment 
+        ? `ต้องการยกเลิกการชำระงวดที่ ${item.month} (ยอด ${formatCurrency(Number(targetPayment.amount))}) และคืนเงินกลับเข้ายอดคงเหลือใช่ไหม?`
+        : `ต้องการยกเลิกการชำระงวดที่ ${item.month} และคืนเงินกลับเข้ายอดคงเหลือใช่ไหม?`;
+
+      if (window.confirm(confirmText)) {
+        deleteLoanPayment.mutate(
+          targetPayment ? { paymentId: targetPayment.id } : { loanId: id },
+          {
+            onSuccess: () => {
+              toast.success(`ยกเลิกการชำระงวดที่ ${item.month} สำเร็จ คืนยอดเข้ากระเป๋าเรียบร้อย`);
+            },
+            onError: () => {
+              toast.error("ยกเลิกการชำระไม่สำเร็จ");
+            },
+          }
+        );
+      }
+    }
+  };
 
   return (
     <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 space-y-4 shadow-sm">
@@ -145,20 +177,24 @@ export default function LoanItem({
                   key={idx} 
                   className={cn(
                     "flex justify-between items-center py-2.5 border-b border-gray-100 last:border-0 transition-colors",
-                    item.isPaid ? "opacity-50" : "hover:bg-gray-50 cursor-pointer"
+                    item.isPaid ? "opacity-75 hover:bg-gray-50/80 cursor-pointer" : "hover:bg-gray-50 cursor-pointer"
                   )}
-                  onClick={() => !item.isPaid && onPay()} // Open payment sheet if unpaid
+                  onClick={() => handleToggleOrRevert(item, idx)}
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex items-center justify-center">
                       <input 
                         type="checkbox" 
                         className={cn(
-                          "toggle toggle-xs", 
+                          "toggle toggle-xs cursor-pointer", 
                           item.isPaid ? "toggle-success" : "toggle-ghost border-gray-300"
                         )}
                         checked={item.isPaid}
-                        readOnly
+                        onChange={() => {}}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleOrRevert(item, idx);
+                        }}
                       />
                     </div>
                     <span className="w-6 h-6 flex items-center justify-center rounded-lg bg-white shadow-sm border border-gray-100 text-[10px] font-black text-gray-500">
@@ -171,17 +207,82 @@ export default function LoanItem({
                       <p className="text-[9px] text-gray-400 font-medium">คงเหลือ: {formatCurrency(item.remaining)}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={cn("text-xs font-black", item.isPaid ? "text-success" : "text-primary")}>
-                      {formatCurrency(item.payment)}
-                    </p>
-                    <p className="text-[8px] text-gray-400 uppercase font-bold">
-                      {item.isPaid ? "Paid" : "Due"}
-                    </p>
+                  <div className="flex items-center gap-2 text-right">
+                    <div>
+                      <p className={cn("text-xs font-black", item.isPaid ? "text-success" : "text-primary")}>
+                        {formatCurrency(item.payment)}
+                      </p>
+                      <p className="text-[8px] text-gray-400 uppercase font-bold">
+                        {item.isPaid ? "Paid" : "Due"}
+                      </p>
+                    </div>
+                    {item.isPaid && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleOrRevert(item, idx);
+                        }}
+                        disabled={deleteLoanPayment.isPending}
+                        className="btn btn-ghost btn-xs text-error/70 hover:text-error hover:bg-error/10 p-1 h-auto min-h-0 rounded-lg transition-colors ml-1"
+                        title={`ยกเลิกการชำระงวดที่ ${item.month}`}
+                        aria-label={`ยกเลิกการชำระงวดที่ ${item.month}`}
+                      >
+                        <RotateCcw size={13} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Payment history list if payments exist */}
+            {payments && payments.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-gray-100 px-4 pb-2">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                  ประวัติการชำระเงิน ({payments.length} รายการ)
+                </p>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
+                  {payments.map((p) => (
+                    <div key={p.id} className="flex justify-between items-center text-xs py-1 border-b border-gray-50 last:border-0">
+                      <div>
+                        <span className="font-semibold text-gray-800">{p.note || "ชำระค่างวด"}</span>
+                        {p.paid_at && (
+                          <span className="text-[10px] text-gray-400 block">
+                            {new Date(p.paid_at).toLocaleDateString("th-TH")}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-emerald-600">
+                          {formatCurrency(Number(p.amount))}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`ต้องการยกเลิกการชำระยอด ${formatCurrency(Number(p.amount))} และคืนเงินเข้ากระเป๋าใช่ไหม?`)) {
+                              deleteLoanPayment.mutate(
+                                { paymentId: p.id },
+                                {
+                                  onSuccess: () => toast.success("ยกเลิกรายการชำระสำเร็จ และคืนยอดเข้ากระเป๋าเรียบร้อย"),
+                                  onError: () => toast.error("เกิดข้อผิดพลาดในการยกเลิกรายการ"),
+                                }
+                              );
+                            }
+                          }}
+                          disabled={deleteLoanPayment.isPending}
+                          className="btn btn-ghost btn-xs text-error/60 hover:text-error p-1 h-auto min-h-0"
+                          title="ลบรายการชำระนี้"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
