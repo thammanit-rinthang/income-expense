@@ -1,4 +1,4 @@
-# Personal Budget & Expense Management System
+# Personal Budget 
 
 A modern, full-stack Next.js application designed to provide a comprehensive, real-time financial management dashboard. This system automates personal budgeting, handles fixed cost deductions, tracks credit card transactions, and synchronizes your spending pool seamlessly.
 
