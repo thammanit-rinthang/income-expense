@@ -74,7 +74,7 @@ export default function LoanItem({
   };
 
   return (
-    <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 space-y-4 shadow-sm">
+    <div className="bg-base-100 p-4 sm:p-5 rounded-xl border border-base-300 space-y-4 hover:border-primary/40 transition-all select-none">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-secondary/10 text-secondary rounded-xl shrink-0">
@@ -141,11 +141,11 @@ export default function LoanItem({
         <div className="space-y-2">
           <div className="flex justify-between text-xs font-bold">
             <span className="text-gray-400 uppercase tracking-tight">Progress</span>
-            <span className="text-secondary">{percentage.toFixed(1)}%</span>
+            <span className="text-primary font-bold">{percentage.toFixed(1)}%</span>
           </div>
-          <div className="w-full bg-gray-50 rounded-xl h-3 overflow-hidden border border-gray-100">
+          <div className="w-full bg-base-200 rounded-full h-1.5 overflow-hidden">
             <div
-              className="h-full bg-secondary rounded-xl transition-all duration-1000"
+              className="h-full bg-primary rounded-full transition-all duration-700"
               style={{ width: `${percentage}%` }}
             />
           </div>

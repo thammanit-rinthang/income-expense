@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/providers/Providers";
 import BottomNav from "@/components/ui/BottomNav";
+import DesktopSidebar from "@/components/ui/DesktopSidebar";
 import GlobalTransactionSheet from "@/components/transactions/GlobalTransactionSheet";
 
 const geistSans = Geist({
@@ -16,7 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "รายรับรายจ่าย",
+  title: "คนจะรวย - Budget & Expense SaaS",
+  description: "ระบบจัดการงบประมาณและรายรับรายจ่ายส่วนบุคคลและครอบครัว",
 };
 
 export default function RootLayout({
@@ -25,14 +27,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-theme="pink">
+    <html lang="th" data-theme="pink">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-base-200`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-base-200 text-base-content`}
       >
         <Providers>
-          <main className="pb-[env(safe-area-inset-bottom)] pb-24 max-w-md mx-auto min-h-screen relative bg-base-200">
-            {children}
-          </main>
+          <div className="min-h-screen flex flex-col lg:flex-row">
+            <DesktopSidebar />
+            <div className="flex-1 lg:pl-60 flex flex-col min-h-screen w-full">
+              <main className="flex-1 w-full pb-[env(safe-area-inset-bottom)]">
+                {children}
+              </main>
+            </div>
+          </div>
           <BottomNav />
           <GlobalTransactionSheet />
         </Providers>

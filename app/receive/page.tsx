@@ -19,9 +19,9 @@ import {
   User,
   CircleDollarSign,
   FileText,
-  ChevronRight,
   Inbox,
   TrendingUp,
+  Plus,
 } from "lucide-react";
 import dayjs from "dayjs";
 import "dayjs/locale/th";
@@ -29,7 +29,11 @@ import "dayjs/locale/th";
 dayjs.locale("th");
 
 const schema = z.object({
-  amount: z.string().min(1).transform((v) => parseFloat(v)).pipe(z.number().positive("กรุณาระบุจำนวนเงินที่มากกว่า 0")),
+  amount: z
+    .string()
+    .min(1)
+    .transform((v) => parseFloat(v))
+    .pipe(z.number().positive("กรุณาระบุจำนวนเงินที่มากกว่า 0")),
   sender: z.string().min(1, "กรุณาระบุชื่อผู้โอน"),
   note: z.string().optional(),
 });
@@ -56,7 +60,6 @@ export default function ReceivePaymentPage() {
 
   const totalReceived = payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onSubmit = (data: any) => {
     if (!budget) return;
     receivePayment(
@@ -88,204 +91,218 @@ export default function ReceivePaymentPage() {
     <div className="flex flex-col min-h-screen bg-base-200">
       <Header />
 
-      <div className="px-4 pt-6 pb-28 space-y-5">
-        {/* Summary Card */}
-        <section className="bg-success p-6 rounded-2xl relative overflow-hidden text-success-content">
-          {/* Decorative circles */}
-          <div className="absolute -top-8 -right-8 w-36 h-36 bg-white/10 rounded-full" />
-          <div className="absolute -bottom-6 -right-4 w-24 h-24 bg-white/10 rounded-full" />
-
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-2">
-              <ArrowDownLeft size={18} className="opacity-70" />
-              <p className="text-sm font-semibold opacity-80">ยอดรับเงินเดือนนี้</p>
-            </div>
-            <h2 className="text-4xl font-black tracking-tight mb-4">
-              {isBudgetLoading ? "..." : formatCurrency(totalReceived)}
+      <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-base-content">
+              รับเงิน / เงินคืน
             </h2>
-            <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2 w-fit">
-              <TrendingUp size={14} />
-              <p className="text-xs font-bold opacity-90">
-                รายรับรวม {isBudgetLoading ? "..." : formatCurrency(budget?.total_income ?? 0)}
-              </p>
-            </div>
+            <p className="text-xs text-base-content/60">
+              บันทึกเงินโอนเข้า เงินคืน หรือรายรับพิเศษนอกเหนือจากเงินเดือน
+            </p>
           </div>
-        </section>
-
-        {/* CTA Button / Inline Form Toggle */}
-        {!showForm ? (
           <button
-            onClick={() => setShowForm(true)}
-            className="btn btn-success w-full rounded-xl text-base font-bold gap-2"
+            onClick={() => setShowForm(!showForm)}
+            className="btn btn-sm btn-primary rounded-xl px-4 font-bold flex items-center gap-1.5"
           >
-            <ArrowDownLeft size={20} />
-            บันทึกรับเงิน
+            <Plus size={16} />
+            <span>{showForm ? "ปิดฟอร์ม" : "บันทึกรับเงิน"}</span>
           </button>
-        ) : (
-          <section className="bg-base-100 rounded-2xl border-[0.5px] border-base-300 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-base-200">
-              <h3 className="font-bold text-base-content">บันทึกรับเงิน</h3>
-              <button
-                onClick={() => { setShowForm(false); reset(); }}
-                className="text-xs text-base-content/40 font-medium hover:text-base-content transition-colors"
-              >
-                ยกเลิก
-              </button>
-            </div>
+        </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4">
-              {/* Amount */}
-              <div className="form-control">
-                <label className="label pb-1">
-                  <span className="label-text font-bold text-base-content flex items-center gap-1.5">
-                    <CircleDollarSign size={14} className="text-success" />
-                    จำนวนเงิน (บาท)
-                  </span>
-                </label>
-                <input
-                  {...register("amount")}
-                  id="receive-amount"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  inputMode="decimal"
-                  className={cn(
-                    "input input-bordered rounded-xl text-2xl font-black tracking-tight",
-                    errors.amount && "input-error"
-                  )}
-                />
-                {errors.amount && (
-                  <span className="text-error text-xs mt-1 px-1">{errors.amount.message}</span>
-                )}
+        {/* Responsive SaaS Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column: Summary Card & Entry Form */}
+          <div className="lg:col-span-5 space-y-5">
+            {/* Summary Card */}
+            <section className="finance-card p-5 sm:p-6 bg-base-100 border border-base-300 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-success/10 text-success">
+                  <ArrowDownLeft size={18} />
+                </div>
+                <span className="text-xs font-bold text-success uppercase tracking-wider">
+                  ยอดรับเงินพิเศษเดือนนี้
+                </span>
               </div>
 
-              {/* Sender */}
-              <div className="form-control">
-                <label className="label pb-1">
-                  <span className="label-text font-bold text-base-content flex items-center gap-1.5">
-                    <User size={14} className="text-success" />
-                    ผู้โอน
-                  </span>
-                </label>
-                <input
-                  {...register("sender")}
-                  id="receive-sender"
-                  type="text"
-                  placeholder="ชื่อผู้โอนเงิน"
-                  className={cn(
-                    "input input-bordered rounded-xl",
-                    errors.sender && "input-error"
-                  )}
-                />
-                {errors.sender && (
-                  <span className="text-error text-xs mt-1 px-1">{errors.sender.message}</span>
-                )}
+              <div className="tabular-nums font-black text-3xl sm:text-4xl text-base-content">
+                {isBudgetLoading ? "..." : formatCurrency(totalReceived)}
               </div>
 
-              {/* Note */}
-              <div className="form-control">
-                <label className="label pb-1">
-                  <span className="label-text font-bold text-base-content flex items-center gap-1.5">
-                    <FileText size={14} className="text-success" />
-                    หมายเหตุ (ไม่บังคับ)
-                  </span>
-                </label>
-                <input
-                  {...register("note")}
-                  id="receive-note"
-                  type="text"
-                  placeholder="เช่น เงินเดือน, โบนัส, ค่าจ้าง..."
-                  className="input input-bordered rounded-xl"
-                />
+              <div className="p-3 bg-base-200/60 rounded-xl border border-base-300/50 flex items-center justify-between text-xs">
+                <span className="text-base-content/60">รายรับหลักในรอบนี้:</span>
+                <span className="tabular-nums font-bold text-base-content">
+                  {isBudgetLoading ? "..." : formatCurrency(budget?.total_income ?? 0)}
+                </span>
               </div>
+            </section>
 
-              <button
-                id="receive-submit-btn"
-                type="submit"
-                disabled={isPending || isBudgetLoading}
-                className="btn btn-success w-full rounded-xl text-base font-bold mt-2"
-              >
-                {isPending ? (
-                  <span className="loading loading-spinner loading-sm" />
-                ) : (
-                  <>
-                    <ArrowDownLeft size={18} />
-                    ยืนยันรับเงิน
-                  </>
-                )}
-              </button>
-            </form>
-          </section>
-        )}
+            {/* Entry Form (Visible on toggle or permanently on desktop if preferred) */}
+            {showForm && (
+              <section className="finance-card p-5 bg-base-100 border border-base-300 space-y-4">
+                <div className="flex items-center justify-between border-b border-base-200 pb-3">
+                  <h3 className="font-bold text-sm text-base-content">กรอกข้อมูลการรับเงิน</h3>
+                  <button
+                    onClick={() => {
+                      setShowForm(false);
+                      reset();
+                    }}
+                    className="text-xs text-base-content/40 hover:text-base-content transition-colors"
+                  >
+                    ยกเลิก
+                  </button>
+                </div>
 
-        {/* Payment History */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-sm font-bold text-base-content/40">ประวัติการรับเงิน</h3>
-            {payments && payments.length > 0 && (
-              <span className="text-[10px] font-black text-base-content/40 uppercase tracking-wider">
-                {payments.length} รายการ
-              </span>
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  {/* Amount */}
+                  <div className="form-control">
+                    <label className="label pb-1">
+                      <span className="label-text font-bold text-xs text-base-content flex items-center gap-1.5">
+                        <CircleDollarSign size={14} className="text-success" />
+                        จำนวนเงิน (บาท)
+                      </span>
+                    </label>
+                    <input
+                      {...register("amount")}
+                      id="receive-amount"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      inputMode="decimal"
+                      className={cn(
+                        "input input-bordered rounded-xl text-xl font-bold tabular-nums",
+                        errors.amount && "input-error"
+                      )}
+                    />
+                    {errors.amount && (
+                      <span className="text-error text-xs mt-1 px-1">{errors.amount.message}</span>
+                    )}
+                  </div>
+
+                  {/* Sender */}
+                  <div className="form-control">
+                    <label className="label pb-1">
+                      <span className="label-text font-bold text-xs text-base-content flex items-center gap-1.5">
+                        <User size={14} className="text-success" />
+                        ผู้โอน
+                      </span>
+                    </label>
+                    <input
+                      {...register("sender")}
+                      id="receive-sender"
+                      type="text"
+                      placeholder="ชื่อผู้โอนเงิน"
+                      className={cn("input input-bordered rounded-xl", errors.sender && "input-error")}
+                    />
+                    {errors.sender && (
+                      <span className="text-error text-xs mt-1 px-1">{errors.sender.message}</span>
+                    )}
+                  </div>
+
+                  {/* Note */}
+                  <div className="form-control">
+                    <label className="label pb-1">
+                      <span className="label-text font-bold text-xs text-base-content flex items-center gap-1.5">
+                        <FileText size={14} className="text-success" />
+                        หมายเหตุ (ไม่บังคับ)
+                      </span>
+                    </label>
+                    <input
+                      {...register("note")}
+                      id="receive-note"
+                      type="text"
+                      placeholder="เช่น เงินคืนเพื่อน, ค่าจ้างพิเศษ..."
+                      className="input input-bordered rounded-xl"
+                    />
+                  </div>
+
+                  <button
+                    id="receive-submit-btn"
+                    type="submit"
+                    disabled={isPending || isBudgetLoading}
+                    className="btn btn-success w-full rounded-xl text-sm font-bold"
+                  >
+                    {isPending ? (
+                      <span className="loading loading-spinner loading-sm" />
+                    ) : (
+                      <>
+                        <ArrowDownLeft size={16} />
+                        <span>ยืนยันรับเงิน</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </section>
             )}
           </div>
 
-          {isPaymentsLoading || isBudgetLoading ? (
-            <div className="flex justify-center py-12">
-              <span className="loading loading-spinner loading-lg text-success" />
+          {/* Right Column: History Ledger */}
+          <div className="lg:col-span-7 space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-sm font-bold text-base-content">ประวัติการรับเงิน</h3>
+              {payments && payments.length > 0 && (
+                <span className="finance-chip px-2.5 py-0.5 text-[11px] font-bold text-base-content/60">
+                  {payments.length} รายการ
+                </span>
+              )}
             </div>
-          ) : payments && payments.length > 0 ? (
-            <div className="grid gap-2">
-              {payments.map((payment) => (
-                <div
-                  key={payment.id}
-                  className="bg-base-100 rounded-xl border-[0.5px] border-base-300 px-4 py-3 flex items-center gap-3"
-                >
-                  {/* Icon */}
-                  <div className="bg-success/10 p-2.5 rounded-xl flex-shrink-0">
-                    <ArrowDownLeft size={18} className="text-success" />
-                  </div>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-base-content truncate">{payment.sender}</p>
-                    {payment.note && (
-                      <p className="text-xs text-base-content/50 truncate">{payment.note}</p>
-                    )}
-                    <p className="text-[10px] text-base-content/30 mt-0.5 font-medium">
-                      {dayjs(payment.received_at).format("D MMM YYYY · HH:mm")}
-                    </p>
-                  </div>
+            {isPaymentsLoading || isBudgetLoading ? (
+              <div className="flex justify-center py-12">
+                <span className="loading loading-spinner loading-lg text-success" />
+              </div>
+            ) : payments && payments.length > 0 ? (
+              <div className="space-y-2">
+                {payments.map((payment) => (
+                  <div
+                    key={payment.id}
+                    className="finance-card p-4 flex items-center justify-between gap-3 hover:bg-base-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="bg-success/10 p-2.5 rounded-xl shrink-0 text-success">
+                        <ArrowDownLeft size={18} />
+                      </div>
 
-                  {/* Amount + Delete */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <p className="text-success font-black text-base">
-                      +{formatCurrency(payment.amount)}
-                    </p>
-                    <button
-                      id={`delete-payment-${payment.id}`}
-                      onClick={() => handleDelete(payment.id)}
-                      disabled={isDeleting}
-                      className="btn btn-xs btn-ghost text-base-content/30 hover:text-error hover:bg-error/10 rounded-lg p-1.5"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                      <div className="truncate">
+                        <p className="font-bold text-sm text-base-content truncate">{payment.sender}</p>
+                        {payment.note && (
+                          <p className="text-xs text-base-content/50 truncate">{payment.note}</p>
+                        )}
+                        <p className="text-[10px] text-base-content/40 mt-0.5">
+                          {dayjs(payment.received_at).format("D MMM YYYY · HH:mm")}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <p className="tabular-nums text-success font-black text-sm sm:text-base">
+                        +{formatCurrency(payment.amount)}
+                      </p>
+                      <button
+                        id={`delete-payment-${payment.id}`}
+                        onClick={() => handleDelete(payment.id)}
+                        disabled={isDeleting}
+                        aria-label="ลบรายการ"
+                        className="btn btn-xs btn-ghost text-base-content/30 hover:text-error hover:bg-error/10 rounded-lg p-1.5"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-14 bg-base-100 rounded-xl border-[0.5px] border-dashed border-base-300">
-              <Inbox size={40} className="mx-auto text-base-300 mb-3" />
-              <p className="text-sm font-semibold text-base-content/40">
-                ยังไม่มีรายการรับเงิน
-              </p>
-              <p className="text-xs text-base-content/25 mt-1">
-                กดปุ่ม &quot;บันทึกรับเงิน&quot; เพื่อเริ่มต้น
-              </p>
-            </div>
-          )}
-        </section>
-      </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-14 bg-base-100 rounded-xl border border-dashed border-base-300">
+                <Inbox size={40} className="mx-auto text-base-content/30 mb-3" />
+                <p className="text-sm font-semibold text-base-content/50">ยังไม่มีรายการรับเงิน</p>
+                <p className="text-xs text-base-content/40 mt-1">
+                  กดปุ่ม &quot;บันทึกรับเงิน&quot; เพื่อเริ่มต้น
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

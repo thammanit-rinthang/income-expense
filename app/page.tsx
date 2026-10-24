@@ -5,23 +5,30 @@ import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import RecentTransactions from "@/components/transactions/RecentTransactions";
 import CombinedDashboard from "@/components/summary/CombinedDashboard";
 import { useUIStore } from "@/store/uiStore";
-import { formatCurrency } from "@/lib/utils";
-import { useState } from "react";
+import { formatCurrency, cn } from "@/lib/utils";
+import { useState, useEffect, useRef } from "react";
 import BudgetEditSheet from "@/components/budget/BudgetEditSheet";
-import { Settings2, AlertCircle, Circle, ArrowUpRight, PiggyBank } from "lucide-react";
+import {
+  Settings2,
+  AlertCircle,
+  CheckCircle2,
+  ArrowUpRight,
+  Plus,
+  ArrowRight,
+  Check,
+} from "lucide-react";
 import { useFixedCosts, useToggleFixedCost } from "@/hooks/useFixedCosts";
 import { useCategories } from "@/hooks/useCategories";
 import CategoryItem from "@/components/categories/CategoryItem";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { useMonthStore } from "@/store/monthStore";
-import { useEffect, useRef } from "react";
 
 export default function Home() {
   const { data: budget, isLoading } = useMonthlyBudget();
-  const { dashboardView } = useUIStore();
+  const { dashboardView, openTransactionSheet } = useUIStore();
   const [isBudgetEditOpen, setIsBudgetEditOpen] = useState(false);
-  
+
   const { data: fixedCosts } = useFixedCosts(budget?.id || null);
   const { data: categories } = useCategories(budget?.id || null);
   const { selectedMonth } = useMonthStore();
@@ -30,11 +37,12 @@ export default function Home() {
 
   const today = new Date();
   const is25thOrLater = today.getDate() >= 25;
-  const isCurrentMonth = 
-    selectedMonth.getMonth() === today.getMonth() && 
+  const isCurrentMonth =
+    selectedMonth.getMonth() === today.getMonth() &&
     selectedMonth.getFullYear() === today.getFullYear();
-  
-  const showIncomeWarning = is25thOrLater && isCurrentMonth && budget && Number(budget.total_income) === 0;
+
+  const showIncomeWarning =
+    is25thOrLater && isCurrentMonth && budget && Number(budget.total_income) === 0;
 
   useEffect(() => {
     if (showIncomeWarning && !hasAutoOpened.current) {
@@ -43,201 +51,284 @@ export default function Home() {
     }
   }, [showIncomeWarning]);
 
-  const unpaidFixedCosts = fixedCosts?.filter(f => !f.is_paid) || [];
-  const allocatedCategories = categories?.filter(c => c.monthly_budget && Number(c.monthly_budget) > 0) || [];
+  const unpaidFixedCosts = fixedCosts?.filter((f) => !f.is_paid) || [];
+  const paidFixedCosts = fixedCosts?.filter((f) => f.is_paid) || [];
+  const allocatedCategories =
+    categories?.filter((c) => c.monthly_budget && Number(c.monthly_budget) > 0) || [];
   const actualSpent = Number(budget?.actual_spent || 0);
 
   const handleToggleFixedCost = (id: number, is_paid: boolean) => {
-    toggleFixedCost({ id, is_paid }, {
-      onSuccess: () => toast.success(is_paid ? "จ่ายแล้ว!" : "ยกเลิกการจ่าย"),
-    });
+    toggleFixedCost(
+      { id, is_paid },
+      {
+        onSuccess: () => toast.success(is_paid ? "ชำระแล้วเรียบร้อย" : "ยกเลิกสถานะชำระ"),
+      }
+    );
   };
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      
-      <div className="finance-shell flex-1 px-4 pt-5 pb-24 space-y-5">
+
+      <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-6">
         {dashboardView === "personal" ? (
           <>
             {/* Income Warning Banner */}
             {showIncomeWarning && (
-              <section 
+              <section
                 onClick={() => setIsBudgetEditOpen(true)}
-                className="finance-card bg-error/10 border-error/20 p-4 flex items-center gap-3 cursor-pointer finance-action"
+                className="p-4 rounded-xl bg-error/10 border border-error/20 flex items-center justify-between gap-3 cursor-pointer hover:bg-error/15 transition-colors"
               >
-                <div className="bg-error text-white p-2 rounded-lg">
-                  <AlertCircle size={20} />
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-error text-white flex items-center justify-center shrink-0">
+                    <AlertCircle size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs sm:text-sm font-bold text-error">
+                      ยังไม่ได้ระบุรายรับของเดือนนี้
+                    </p>
+                    <p className="text-[11px] text-error/80">
+                      กรุณาระบุรายได้เพื่อให้ระบบคำนวณเงินใช้ได้คงเหลือ
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-error">ยังไม่ได้ระบุรายรับเดือนนี้</p>
-                  <p className="text-[10px] text-error/70 font-medium">วันนี้วันที่ {today.getDate()} แล้ว กรุณาระบุรายรับเพื่อให้ระบบคำนวณงบประมาณ</p>
-                </div>
+                <span className="text-xs font-bold text-error underline whitespace-nowrap">
+                  ระบุรายรับ
+                </span>
               </section>
             )}
 
-            {/* Remaining Pool Summary Card */}
-            <section className="relative overflow-hidden rounded-[1.5rem] bg-primary p-5 text-primary-content shadow-xl shadow-primary/15">
-              <div className="absolute -right-10 -top-16 h-44 w-44 rounded-full bg-white/10" />
-              <div className="absolute -bottom-20 left-8 h-48 w-48 rounded-full bg-white/10" />
-              <div className="relative z-10 space-y-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm font-semibold opacity-80">เงินใช้ได้คงเหลือ</p>
-                    <p className="text-xs opacity-60">หลังหักรายการที่บันทึกแล้ว</p>
+            {/* ── Minimal Flow Hero: Remaining Spending Pool ── */}
+            <section className="p-6 sm:p-8 rounded-2xl bg-base-100 border border-base-300 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <span className="text-xs font-bold text-base-content/50 uppercase tracking-wider block mb-1">
+                    เงินใช้ได้คงเหลือในรอบนี้ (Remaining Pool)
+                  </span>
+                  <div className="tabular-nums font-black text-4xl sm:text-5xl text-base-content tracking-tight">
+                    {isLoading ? "..." : formatCurrency(budget?.remaining_spending_pool || 0)}
                   </div>
-                  <button 
-                    onClick={() => setIsBudgetEditOpen(true)}
-                    aria-label="แก้ไขงบเดือนนี้"
-                    className="p-2 hover:bg-white/10 rounded-full text-white/70 transition-colors -mr-2 -mt-2"
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 sm:pt-0">
+                  <button
+                    onClick={openTransactionSheet}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-primary-content text-xs font-bold hover:bg-primary/90 transition-all active:scale-[0.98]"
                   >
-                    <Settings2 size={18} />
+                    <Plus size={16} />
+                    <span>บันทึกรายจ่าย</span>
+                  </button>
+                  <button
+                    onClick={() => setIsBudgetEditOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-base-200 text-base-content/70 hover:text-base-content text-xs font-semibold hover:bg-base-300 transition-colors"
+                    title="แก้ไขรายรับและเงินกันไว้"
+                  >
+                    <Settings2 size={15} />
+                    <span className="hidden sm:inline">ตั้งค่างบ</span>
                   </button>
                 </div>
-                
-                <h2 className="finance-display font-black">
-                  {isLoading ? "..." : formatCurrency(budget?.remaining_spending_pool || 0)}
-                </h2>
+              </div>
 
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-white/12 backdrop-blur-md p-3 rounded-2xl border border-white/10">
-                    <p className="text-[10px] font-bold opacity-70 mb-1">รายรับ</p>
-                    <p className="text-sm font-black">
+              {/* The System Financial Flow Stream */}
+              <div className="pt-4 border-t border-base-200">
+                <span className="text-[11px] font-bold text-base-content/40 uppercase tracking-wider block mb-2.5">
+                  เส้นทางการคำนวณงบประมาณ
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3 rounded-xl bg-base-200/50">
+                    <span className="text-base-content/50 block text-[11px] mb-1">1. รายรับตั้งต้น</span>
+                    <span className="tabular-nums font-bold text-success text-sm block">
                       {isLoading ? "..." : formatCurrency(budget?.total_income || 0)}
-                    </p>
+                    </span>
                   </div>
-                  <div className="bg-white/12 backdrop-blur-md p-3 rounded-2xl border border-white/10">
-                    <p className="text-[10px] font-bold opacity-70 mb-1">กันไว้</p>
-                    <p className="text-sm font-black">
+
+                  <div className="p-3 rounded-xl bg-base-200/50">
+                    <span className="text-base-content/50 block text-[11px] mb-1">2. หักเงินกันไว้</span>
+                    <span className="tabular-nums font-bold text-base-content text-sm block">
                       {isLoading ? "..." : formatCurrency(budget?.reserved_amount || 0)}
-                    </p>
+                    </span>
                   </div>
-                  <div className="bg-white/12 backdrop-blur-md p-3 rounded-2xl border border-white/10">
-                    <p className="text-[10px] font-bold opacity-70 mb-1">ใช้ไปแล้ว</p>
-                    <p className="text-sm font-black">
+
+                  <div className="p-3 rounded-xl bg-base-200/50">
+                    <span className="text-base-content/50 block text-[11px] mb-1">3. หักจ่ายประจำ</span>
+                    <span className="tabular-nums font-bold text-base-content text-sm block">
+                      {isLoading ? "..." : formatCurrency(fixedCosts?.reduce((sum, f) => sum + Number(f.amount), 0) || 0)}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-base-200/50">
+                    <span className="text-base-content/50 block text-[11px] mb-1">4. หักใช้ไปแล้ว</span>
+                    <span className="tabular-nums font-bold text-error text-sm block">
                       {isLoading ? "..." : formatCurrency(actualSpent)}
-                    </p>
+                    </span>
                   </div>
                 </div>
               </div>
             </section>
 
-            <button
-              onClick={() => setIsBudgetEditOpen(true)}
-              className="finance-panel finance-action w-full p-4 flex items-center justify-between text-left"
-            >
-              <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-primary/10 p-3 text-primary">
-                  <PiggyBank size={22} />
-                </div>
-                <div>
-                  <p className="font-black text-base-content">ตั้งค่างบเดือนนี้</p>
-                  <p className="text-xs text-base-content/50">แก้รายรับ เงินกันไว้ และรายการที่ต้องจ่าย</p>
-                </div>
-              </div>
-              <ArrowUpRight size={18} className="text-primary" />
-            </button>
-
-            {/* Unpaid Fixed Costs */}
-            {unpaidFixedCosts.length > 0 && (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="text-sm font-black text-base-content/70">สิ่งที่ต้องจ่าย</h3>
-                  <span className="finance-chip px-3 py-1 text-[10px] font-bold text-base-content/60">
-                    เหลือ {unpaidFixedCosts.length} รายการ
-                  </span>
-                </div>
-                <div className="grid gap-2">
-                  {unpaidFixedCosts.map((fixed) => (
-                    <div 
-                      key={fixed.id} 
-                      className="finance-card p-3 flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => !isToggling && handleToggleFixedCost(fixed.id, true)}
-                          disabled={isToggling}
-                          className={`transition-colors ${isToggling ? "text-base-200 cursor-not-allowed" : "text-base-300 hover:text-primary"}`}
-                        >
-                          <Circle size={24} />
-                        </button>
-                        <div>
-                          <p className="font-bold text-base-content">{fixed.name}</p>
-                          <p className="text-[10px] font-black text-primary uppercase">
-                            {formatCurrency(fixed.amount)}
-                          </p>
-                        </div>
+            {/* ── Responsive 2-Column Layout ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Left Column: Category Budgets + Recent Transactions */}
+              <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+                {/* Category Budgets */}
+                {allocatedCategories.length > 0 && (
+                  <section className="space-y-3">
+                    <div className="flex items-center justify-between px-1">
+                      <div>
+                        <h3 className="text-sm font-bold text-base-content">งบประมาณตามหมวดหมู่</h3>
+                        <p className="text-xs text-base-content/50">ติดตามวงเงินที่ใช้ไปในแต่ละหมวด</p>
                       </div>
-                      <button 
-                        onClick={() => !isToggling && handleToggleFixedCost(fixed.id, true)}
-                        disabled={isToggling}
-                        className="btn btn-xs btn-primary rounded-full px-3 disabled:bg-primary/50"
+                      <Link
+                        href="/income"
+                        className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
                       >
-                        {isToggling ? <span className="loading loading-spinner loading-xs"></span> : "จ่ายเลย"}
-                      </button>
+                        จัดการงบ <ArrowRight size={13} />
+                      </Link>
                     </div>
-                  ))}
-                </div>
-              </section>
-            )}
 
-            {/* Category Progress */}
-            {allocatedCategories.length > 0 && (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="text-sm font-black text-base-content/70">งบรายหมวด</h3>
-                  <span className="finance-chip px-3 py-1 text-[10px] font-bold text-base-content/60">
-                    {allocatedCategories.length} หมวด
-                  </span>
-                </div>
-                <div className="grid gap-2">
-                  {allocatedCategories.map((category) => (
-                    <CategoryItem
-                      key={category.id}
-                      name={category.name}
-                      spent={category.spent || 0}
-                      budget={category.monthly_budget}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {allocatedCategories.map((category) => (
+                        <CategoryItem
+                          key={category.id}
+                          name={category.name}
+                          spent={category.spent || 0}
+                          budget={category.monthly_budget}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                )}
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="finance-card p-5">
-                <p className="finance-label mb-1">รายรับเดือนนี้</p>
-                <p className="text-xl font-black text-success">
-                  {isLoading ? "..." : formatCurrency(budget?.total_income || 0)}
-                </p>
-              </div>
-              <div className="finance-card p-5">
-                <p className="finance-label mb-1">จ่ายจริงแล้ว</p>
-                <p className="text-xl font-black text-error">
-                  {isLoading ? "..." : formatCurrency(budget?.cash_spent || 0)}
-                </p>
-              </div>
-            </div>
+                {/* Recent Transactions Feed */}
+                <section className="space-y-3">
+                  <div className="flex justify-between items-center px-1">
+                    <div>
+                      <h3 className="text-sm font-bold text-base-content">รายการใช้จ่ายล่าสุด</h3>
+                      <p className="text-xs text-base-content/50">ประวัติการบันทึกในรอบนี้</p>
+                    </div>
+                    <Link
+                      href="/transactions"
+                      className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+                    >
+                      ดูทั้งหมด <ArrowUpRight size={14} />
+                    </Link>
+                  </div>
 
-            {/* Recent Transactions Section */}
-            <div className="space-y-4 pb-12">
-              <div className="flex justify-between items-center px-1">
-                <h3 className="text-sm font-black text-base-content/70">รายการล่าสุด</h3>
-                <Link href="/transactions" className="text-xs font-bold text-primary px-3 py-1.5 hover:bg-primary/5 rounded-full transition-colors">
-                  ดูทั้งหมด
-                </Link>
+                  {budget && <RecentTransactions budgetId={budget.id} />}
+                </section>
               </div>
-              
-              {budget && <RecentTransactions budgetId={budget.id} />}
+
+              {/* Right Column: Bills to Pay Checklist */}
+              <div className="lg:col-span-5 xl:col-span-4 space-y-6">
+                <section className="p-5 rounded-2xl bg-base-100 border border-base-300 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-base-content">
+                        สิ่งที่ต้องจ่าย (Fixed Bills)
+                      </h3>
+                      <p className="text-xs text-base-content/50">
+                        {unpaidFixedCosts.length > 0
+                          ? `เหลืออีก ${unpaidFixedCosts.length} รายการที่ต้องจ่าย`
+                          : "จ่ายครบทุกรายการแล้ว"}
+                      </p>
+                    </div>
+                    <Link
+                      href="/income"
+                      className="text-xs font-semibold text-primary hover:underline"
+                    >
+                      แก้ไข
+                    </Link>
+                  </div>
+
+                  {/* Unpaid List */}
+                  {unpaidFixedCosts.length > 0 ? (
+                    <div className="space-y-2">
+                      {unpaidFixedCosts.map((fixed) => (
+                        <div
+                          key={fixed.id}
+                          className="flex items-center justify-between p-3 rounded-xl bg-base-200/50 hover:bg-base-200 transition-colors"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <button
+                              onClick={() => !isToggling && handleToggleFixedCost(fixed.id, true)}
+                              disabled={isToggling}
+                              aria-label={`ทำเครื่องหมายว่าจ่าย ${fixed.name} แล้ว`}
+                              className="w-5 h-5 rounded-md border border-base-300 hover:border-primary flex items-center justify-center transition-colors shrink-0 bg-base-100"
+                            >
+                              {/* Empty check indicator */}
+                            </button>
+                            <div className="truncate">
+                              <p className="text-xs sm:text-sm font-semibold text-base-content truncate">
+                                {fixed.name}
+                              </p>
+                              <p className="tabular-nums text-xs font-bold text-primary">
+                                {formatCurrency(fixed.amount)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => !isToggling && handleToggleFixedCost(fixed.id, true)}
+                            disabled={isToggling}
+                            className="px-2.5 py-1 rounded-lg bg-base-100 border border-base-300 hover:border-primary text-[11px] font-bold text-base-content transition-colors shrink-0"
+                          >
+                            จ่ายแล้ว
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-success/5 border border-success/15 flex items-center gap-3 text-success">
+                      <CheckCircle2 size={18} />
+                      <span className="text-xs font-semibold">ชำระค่าใช้จ่ายประจำครบหมดแล้ว</span>
+                    </div>
+                  )}
+
+                  {/* Paid Bills Summary / Accordion */}
+                  {paidFixedCosts.length > 0 && (
+                    <div className="pt-3 border-t border-base-200">
+                      <span className="text-[11px] font-bold text-base-content/40 uppercase tracking-wider block mb-2">
+                        ชำระแล้ว ({paidFixedCosts.length} รายการ)
+                      </span>
+                      <div className="space-y-1.5 opacity-70">
+                        {paidFixedCosts.map((fixed) => (
+                          <div
+                            key={fixed.id}
+                            className="flex items-center justify-between py-1.5 px-2 rounded-lg text-xs"
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <button
+                                onClick={() => !isToggling && handleToggleFixedCost(fixed.id, false)}
+                                disabled={isToggling}
+                                title="คลิกเพื่อยกเลิกสถานะชำระ"
+                                className="w-4 h-4 rounded bg-success/20 text-success flex items-center justify-center shrink-0"
+                              >
+                                <Check size={11} strokeWidth={3} />
+                              </button>
+                              <span className="line-through text-base-content/60 truncate">
+                                {fixed.name}
+                              </span>
+                            </div>
+                            <span className="tabular-nums text-base-content/50 ml-2">
+                              {formatCurrency(fixed.amount)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </section>
+              </div>
             </div>
           </>
         ) : (
           <CombinedDashboard />
         )}
       </div>
-      <BudgetEditSheet 
-        isOpen={isBudgetEditOpen} 
-        onClose={() => setIsBudgetEditOpen(false)} 
+
+      <BudgetEditSheet
+        isOpen={isBudgetEditOpen}
+        onClose={() => setIsBudgetEditOpen(false)}
         budget={budget || null}
       />
     </div>

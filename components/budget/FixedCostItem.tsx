@@ -1,9 +1,8 @@
 "use client";
 
 import { FixedCost } from "@/hooks/useFixedCosts";
-import { formatCurrency } from "@/lib/utils";
-import { Home, Zap, Pencil, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
+import { Home, Zap, Pencil, Trash2, Check } from "lucide-react";
 
 interface FixedCostItemProps {
   fixedCost: FixedCost;
@@ -12,64 +11,72 @@ interface FixedCostItemProps {
   onToggle: (id: number, isPaid: boolean) => void;
 }
 
-export default function FixedCostItem({ fixedCost, onEdit, onDelete, onToggle }: FixedCostItemProps) {
+export default function FixedCostItem({
+  fixedCost,
+  onEdit,
+  onDelete,
+  onToggle,
+}: FixedCostItemProps) {
   return (
-    <div className="bg-base-100 p-3 rounded-xl border-[0.5px] border-base-300 flex flex-col gap-3">
+    <div className="p-4 rounded-xl bg-base-100 border border-base-300 space-y-3 transition-all hover:border-primary/40">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/5 p-2 rounded-lg text-primary">
-            {fixedCost.name.includes("เช่า") ? <Home size={20} /> : <Zap size={20} />}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-base-200 text-base-content/60 flex items-center justify-center shrink-0">
+            {fixedCost.name.includes("เช่า") ? <Home size={16} /> : <Zap size={16} />}
           </div>
-          <div>
-            <h4 className={cn(
-              "text-sm font-bold text-base-content leading-tight",
-              fixedCost.is_paid && "line-through text-base-content/40"
-            )}>
+          <div className="truncate">
+            <h4
+              className={cn(
+                "text-sm font-semibold text-base-content truncate",
+                fixedCost.is_paid && "line-through text-base-content/40"
+              )}
+            >
               {fixedCost.name}
             </h4>
-            <p className="text-[10px] font-medium text-base-content/40 uppercase tracking-wider">
-              ทุกเดือน
-            </p>
+            <span className="text-[10px] text-base-content/40 uppercase tracking-wider block">
+              รายเดือน
+            </span>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-black text-base-content">
+
+        <div className="text-right shrink-0 ml-3">
+          <p className="tabular-nums text-sm font-bold text-base-content">
             {formatCurrency(fixedCost.amount)}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-2 border-t border-base-200">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between pt-2.5 border-t border-base-200 text-xs">
+        {/* Toggle Paid State */}
+        <button
+          onClick={() => onToggle(fixedCost.id, !fixedCost.is_paid)}
+          className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors",
+            fixedCost.is_paid
+              ? "bg-success/10 text-success"
+              : "bg-base-200 text-base-content/60 hover:text-base-content"
+          )}
+        >
+          {fixedCost.is_paid && <Check size={13} strokeWidth={2.5} />}
+          <span>{fixedCost.is_paid ? "ชำระแล้ว" : "ยังไม่จ่าย"}</span>
+        </button>
+
+        {/* Edit and Delete Actions */}
+        <div className="flex items-center gap-1">
           <button
             onClick={() => onEdit(fixedCost)}
-            className="btn btn-xs btn-ghost text-base-content/40 hover:text-primary gap-1 px-2"
+            aria-label="แก้ไข"
+            className="p-1.5 rounded-lg text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors"
           >
-            <Pencil size={12} />
-            <span className="text-[10px] font-bold">แก้ไข</span>
+            <Pencil size={14} />
           </button>
           <button
             onClick={() => onDelete(fixedCost.id)}
-            className="btn btn-xs btn-ghost text-base-content/20 hover:text-error gap-1 px-2"
+            aria-label="ลบ"
+            className="p-1.5 rounded-lg text-base-content/40 hover:text-error hover:bg-error/10 transition-colors"
           >
-            <Trash2 size={12} />
-            <span className="text-[10px] font-bold">ลบ</span>
+            <Trash2 size={14} />
           </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className={cn(
-            "text-[10px] font-bold uppercase",
-            fixedCost.is_paid ? "text-success" : "text-base-content/30"
-          )}>
-            {fixedCost.is_paid ? "จ่ายแล้ว" : "ยังไม่จ่าย"}
-          </span>
-          <input 
-            type="checkbox"
-            className="toggle toggle-primary toggle-sm"
-            checked={fixedCost.is_paid}
-            onChange={() => onToggle(fixedCost.id, !fixedCost.is_paid)}
-          />
         </div>
       </div>
     </div>

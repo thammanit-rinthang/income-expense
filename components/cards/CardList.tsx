@@ -11,77 +11,100 @@ interface CardListProps {
   onPaymentClick: (card: CreditCard) => void;
 }
 
-export default function CardList({ cards, onCardClick, onEditClick, onPaymentClick }: CardListProps) {
+export default function CardList({
+  cards,
+  onCardClick,
+  onEditClick,
+  onPaymentClick,
+}: CardListProps) {
   return (
     <>
       {cards.map((card) => {
-        const usagePercent = Math.min((card.statement_balance / card.credit_limit) * 100, 100);
-        
+        const usagePercent = Math.min(
+          (card.statement_balance / card.credit_limit) * 100,
+          100
+        );
+
         return (
           <div
             key={card.id}
-            className="bg-white p-5 rounded-xl border border-gray-100 space-y-4 transition-all cursor-pointer"
+            className="bg-base-100 p-5 rounded-xl border border-base-300 space-y-4 hover:border-primary/40 transition-all cursor-pointer group select-none"
             onClick={() => onCardClick(card)}
           >
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-blue-50 text-blue-500 rounded-xl">
-                  <CardIcon size={24} />
+                <div className="w-9 h-9 rounded-lg bg-base-200 text-base-content/70 flex items-center justify-center shrink-0">
+                  <CardIcon size={18} />
                 </div>
                 <div>
-                  <h4 className="font-black text-gray-900">{card.name}</h4>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                  <h4 className="font-bold text-sm text-base-content group-hover:text-primary transition-colors">
+                    {card.name}
+                  </h4>
+                  <p className="text-[10px] text-base-content/40 uppercase tracking-wider font-semibold">
                     {card.person_name || "บัญชีหลัก"}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+
+              <div className="flex items-center gap-1">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onEditClick(card);
                   }}
-                  className="p-2 hover:bg-gray-50 rounded-xl text-gray-400 transition-colors"
+                  aria-label="แก้ไขข้อมูลบัตร"
+                  className="p-1.5 hover:bg-base-200 rounded-lg text-base-content/40 hover:text-base-content transition-colors"
                 >
-                  <Pencil size={18} />
+                  <Pencil size={14} />
                 </button>
-                <ChevronRight size={24} className="text-gray-200" />
+                <ChevronRight size={18} className="text-base-content/30 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-bold">
-                <span className="text-gray-400 uppercase tracking-tight">การใช้งาน</span>
-                <span className={cn(
-                  usagePercent > 90 ? "text-red-500" : usagePercent > 70 ? "text-amber-500" : "text-blue-500"
-                )}>
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs font-semibold">
+                <span className="text-base-content/50">การใช้วงเงิน</span>
+                <span
+                  className={cn(
+                    "tabular-nums font-bold",
+                    usagePercent > 80
+                      ? "text-error"
+                      : usagePercent > 60
+                      ? "text-warning"
+                      : "text-base-content"
+                  )}
+                >
                   {usagePercent.toFixed(1)}%
                 </span>
               </div>
-              
-              <div className="w-full bg-gray-50 rounded-xl h-3 overflow-hidden border border-gray-100">
+
+              <div className="w-full bg-base-200 rounded-full h-1.5 overflow-hidden">
                 <div
                   className={cn(
-                    "h-full rounded-xl transition-all duration-1000",
-                    usagePercent > 90 ? "bg-red-500" : usagePercent > 70 ? "bg-amber-500" : "bg-blue-500"
+                    "h-full rounded-full transition-all duration-700",
+                    usagePercent > 80
+                      ? "bg-error"
+                      : usagePercent > 60
+                      ? "bg-warning"
+                      : "bg-primary"
                   )}
                   style={{ width: `${usagePercent}%` }}
                 />
               </div>
 
-              <div className="flex justify-between text-[10px] font-black text-gray-400 px-1 uppercase tracking-wider">
-                <span>ยอดคงเหลือ: {formatCurrency(card.statement_balance)}</span>
+              <div className="flex justify-between text-[11px] text-base-content/50 pt-1 tabular-nums">
+                <span>ยอดเรียกเก็บ: <strong className="text-base-content">{formatCurrency(card.statement_balance)}</strong></span>
                 <span>วงเงิน: {formatCurrency(card.credit_limit)}</span>
               </div>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-2 border-t border-base-200">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onPaymentClick(card);
                 }}
-                className="btn btn-sm btn-outline btn-primary w-full rounded-xl font-bold text-xs"
+                className="w-full py-2 px-3 rounded-lg bg-base-200 hover:bg-primary hover:text-primary-content text-xs font-bold text-base-content transition-all"
               >
                 ชำระยอดบัตร
               </button>

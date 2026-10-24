@@ -10,7 +10,7 @@ import CategorySheet from "@/components/categories/CategorySheet";
 import FixedCostItem from "@/components/budget/FixedCostItem";
 import FixedCostSheet from "@/components/budget/FixedCostSheet";
 import CopyFixedCostSheet from "@/components/budget/CopyFixedCostSheet";
-import { Plus, Settings2, ReceiptText } from "lucide-react";
+import { Plus, Settings2, ReceiptText, Layers, BookmarkCheck } from "lucide-react";
 import toast from "react-hot-toast";
 import IncomeSummary from "@/components/summary/IncomeSummary";
 
@@ -18,7 +18,7 @@ export default function IncomePage() {
   const [activeTab, setActiveTab] = useState<"categories" | "fixed">("categories");
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
-  
+
   const [isFixedSheetOpen, setIsFixedSheetOpen] = useState(false);
   const [isCopySheetOpen, setIsCopySheetOpen] = useState(false);
   const [selectedFixedCost, setSelectedFixedCost] = useState<any>(null);
@@ -26,7 +26,7 @@ export default function IncomePage() {
   const { data: budget, isLoading: isBudgetLoading } = useMonthlyBudget();
   const { data: categories, isLoading: isCategoriesLoading } = useCategories(budget?.id || null);
   const { data: fixedCosts, isLoading: isFixedLoading } = useFixedCosts(budget?.id || null);
-  
+
   const { mutate: deleteFixedCost } = useDeleteFixedCost();
   const { mutate: toggleFixedCost } = useToggleFixedCost();
 
@@ -52,10 +52,13 @@ export default function IncomePage() {
 
   const handleDeleteFixedCost = (id: number) => {
     if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้?")) {
-      deleteFixedCost({ id, budgetId: budget!.id }, {
-        onSuccess: () => toast.success("ลบรายการแล้ว"),
-        onError: () => toast.error("ล้มเหลวในการลบรายการ"),
-      });
+      deleteFixedCost(
+        { id, budgetId: budget!.id },
+        {
+          onSuccess: () => toast.success("ลบรายการแล้ว"),
+          onError: () => toast.error("ล้มเหลวในการลบรายการ"),
+        }
+      );
     }
   };
 
@@ -67,51 +70,61 @@ export default function IncomePage() {
     <div className="flex flex-col min-h-screen bg-base-200">
       <Header />
 
-      <div className="px-5 pt-6 pb-24 space-y-8">
-        {/* Tabs */}
-        <div className="flex bg-base-100 p-1 rounded-xl border-[0.5px] border-base-300">
+      <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-6">
+        {/* Segmented Control Tabs */}
+        <div className="flex bg-base-100 p-1 rounded-xl border border-base-300 max-w-md mx-auto sm:mx-0">
           <button
             onClick={() => setActiveTab("categories")}
-            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "categories" ? "bg-primary text-white" : "text-gray-400 hover:text-gray-600"
+            className={`flex items-center justify-center gap-2 flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+              activeTab === "categories"
+                ? "bg-primary text-primary-content"
+                : "text-base-content/60 hover:text-base-content"
             }`}
           >
-            หมวดหมู่
+            <Layers size={16} />
+            <span>หมวดหมู่ค่าใช้จ่าย</span>
           </button>
           <button
             onClick={() => setActiveTab("fixed")}
-            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "fixed" ? "bg-primary text-white" : "text-gray-400 hover:text-gray-600"
+            className={`flex items-center justify-center gap-2 flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+              activeTab === "fixed"
+                ? "bg-primary text-primary-content"
+                : "text-base-content/60 hover:text-base-content"
             }`}
           >
-            ค่าใช้จ่ายคงที่
+            <BookmarkCheck size={16} />
+            <span>ค่าใช้จ่ายคงที่</span>
           </button>
         </div>
 
         {activeTab === "categories" ? (
           <div className="space-y-6">
-            <IncomeSummary 
-              type="categories" 
-              categories={categories} 
-            />
+            <IncomeSummary type="categories" categories={categories} />
 
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-black text-gray-900">หมวดหมู่ค่าใช้จ่าย</h2>
-              <button 
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-base-content">
+                  รายการหมวดหมู่
+                </h2>
+                <p className="text-xs text-base-content/60">
+                  ตั้งงบรายหมวดเพื่อควบคุมและติดตามการใช้จ่าย
+                </p>
+              </div>
+              <button
                 onClick={handleAddCategory}
-                className="btn btn-sm btn-primary rounded-xl px-4"
+                className="btn btn-sm btn-primary rounded-xl px-4 font-bold flex items-center gap-1.5"
               >
-                <Plus size={18} className="mr-1" />
-                เพิ่ม
+                <Plus size={16} />
+                <span>เพิ่มหมวดหมู่</span>
               </button>
             </div>
 
             {isCategoriesLoading || isBudgetLoading ? (
               <div className="flex justify-center p-12">
-                <span className="loading loading-spinner loading-lg text-primary"></span>
+                <span className="loading loading-spinner loading-lg text-primary" />
               </div>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 {categories?.map((category) => (
                   <CategoryItem
                     key={category.id}
@@ -122,9 +135,13 @@ export default function IncomePage() {
                   />
                 ))}
                 {categories?.length === 0 && (
-                  <div className="text-center p-12 bg-base-100 rounded-xl border-[0.5px] border-dashed border-base-300">
-                    <Settings2 size={48} className="mx-auto text-base-300 mb-4" />
-                    <p className="text-gray-400 font-medium">ยังไม่มีหมวดหมู่<br/>เริ่มเพิ่มหมวดหมู่แรกของคุณได้เลย</p>
+                  <div className="col-span-full text-center p-12 bg-base-100 rounded-xl border border-dashed border-base-300">
+                    <Settings2 size={40} className="mx-auto text-base-content/30 mb-3" />
+                    <p className="text-sm text-base-content/60 font-medium">
+                      ยังไม่มีหมวดหมู่
+                      <br />
+                      เริ่มเพิ่มหมวดหมู่แรกของคุณได้เลย
+                    </p>
                   </div>
                 )}
               </div>
@@ -132,41 +149,57 @@ export default function IncomePage() {
           </div>
         ) : (
           <div className="space-y-6">
-            <IncomeSummary 
-              type="fixed" 
-              fixedCosts={fixedCosts} 
-            />
+            <IncomeSummary type="fixed" fixedCosts={fixedCosts} />
 
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-black text-gray-900">ค่าใช้จ่ายคงที่</h2>
-              <button 
-                onClick={handleAddFixedCost}
-                className="btn btn-sm btn-primary rounded-xl px-4"
-              >
-                <Plus size={18} className="mr-1" />
-                เพิ่ม
-              </button>
+            <div className="flex flex-wrap justify-between items-center gap-3">
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-base-content">
+                  รายการค่าใช้จ่ายคงที่
+                </h2>
+                <p className="text-xs text-base-content/60">
+                  ค่าใช้จ่ายที่ต้องจ่ายแน่นอนในแต่ละเดือน (เช่น ค่าห้อง ค่าน้ำ ค่าเน็ต)
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsCopySheetOpen(true)}
+                  className="btn btn-sm btn-outline border-base-300 rounded-xl px-3 text-xs font-bold"
+                >
+                  คัดลอกจากเดือนก่อน
+                </button>
+                <button
+                  onClick={handleAddFixedCost}
+                  className="btn btn-sm btn-primary rounded-xl px-4 font-bold flex items-center gap-1.5"
+                >
+                  <Plus size={16} />
+                  <span>เพิ่มรายการ</span>
+                </button>
+              </div>
             </div>
 
             {isFixedLoading || isBudgetLoading ? (
               <div className="flex justify-center p-12">
-                <span className="loading loading-spinner loading-lg text-primary"></span>
+                <span className="loading loading-spinner loading-lg text-primary" />
               </div>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 {fixedCosts?.map((fixed) => (
                   <FixedCostItem
                     key={fixed.id}
                     fixedCost={fixed}
+                    onToggle={handleToggleFixedCost}
                     onEdit={handleEditFixedCost}
                     onDelete={handleDeleteFixedCost}
-                    onToggle={handleToggleFixedCost}
                   />
                 ))}
                 {fixedCosts?.length === 0 && (
-                  <div className="text-center p-12 bg-base-100 rounded-xl border-[0.5px] border-dashed border-base-300">
-                    <ReceiptText size={48} className="mx-auto text-base-300 mb-4" />
-                    <p className="text-gray-400 font-medium">ยังไม่มีค่าใช้จ่ายคงที่<br/>เพิ่มรายการเพื่อติดตามยอดจ่ายรายเดือน</p>
+                  <div className="col-span-full text-center p-12 bg-base-100 rounded-xl border border-dashed border-base-300">
+                    <ReceiptText size={40} className="mx-auto text-base-content/30 mb-3" />
+                    <p className="text-sm text-base-content/60 font-medium">
+                      ยังไม่มีค่าใช้จ่ายคงที่
+                      <br />
+                      เพิ่มรายการ หรือคัดลอกจากเดือนก่อนหน้าได้เลย
+                    </p>
                   </div>
                 )}
               </div>
@@ -183,6 +216,7 @@ export default function IncomePage() {
             budgetId={budget.id}
             initialData={selectedCategory}
           />
+
           <FixedCostSheet
             isOpen={isFixedSheetOpen}
             onClose={() => setIsFixedSheetOpen(false)}

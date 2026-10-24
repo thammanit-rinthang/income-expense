@@ -4,16 +4,16 @@
 
 /* ตั้งค่า Theme สำหรับ daisyUI v5 */
 @plugin "daisyui/theme" {
-  name: "pink"; /* ชื่อ theme ที่จะใช้ใน data-theme */
+  name: "pink";
   default: true;
   --color-primary: #D4537E;
   --color-primary-content: #ffffff;
   --color-secondary: #FBEAF0;
   --color-accent: #72243E;
-  --color-neutral: #1a1a1a;
+  --color-neutral: #1e293b;
   --color-base-100: #ffffff;
-  --color-base-200: #fafafa;
-  --color-base-300: #f0f0f0;
+  --color-base-200: #f8fafc;
+  --color-base-300: #e2e8f0;
 }
 
 @layer base {
@@ -23,18 +23,19 @@
   }
 
   body {
-    /* ใช้สีจาก theme ที่เราตั้งไว้ */
     @apply text-neutral bg-base-200;
     font-family: var(--font-body);
-    background:
-      radial-gradient(circle at top left, var(--color-accent-soft), transparent 32rem),
-      var(--color-paper);
     color: var(--color-ink);
   }
 
   *:focus-visible {
-    outline: 3px solid var(--color-focus);
-    outline-offset: 3px;
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  /* Force tabular numbers on all currency & numbers */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -49,32 +50,36 @@
 }
 
 @layer components {
+  /* Fluid responsive container for SaaS */
   .finance-shell {
-    width: min(100%, 32rem);
+    width: 100%;
+    max-width: 80rem;
     margin-inline: auto;
   }
 
+  /* Flat, modern SaaS panel with zero drop shadow */
   .finance-panel {
-    background: color-mix(in oklch, var(--color-card) 92%, var(--color-accent-soft));
-    border: var(--rule-thin);
+    background: var(--color-card);
+    border: 1px solid var(--color-rule);
     border-radius: var(--radius-xl);
-    box-shadow: 0 20px 50px color-mix(in oklch, var(--color-accent) 12%, transparent);
   }
 
+  /* Clean SaaS card */
   .finance-card {
     background: var(--color-card);
-    border: var(--rule-thin);
+    border: 1px solid var(--color-rule);
     border-radius: var(--radius-lg);
   }
 
+  /* Clean chip pill */
   .finance-chip {
     background: var(--color-card-muted);
-    border: var(--rule-thin);
+    border: 1px solid var(--color-rule);
     border-radius: 999px;
   }
 
   .finance-action {
-    transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-med) var(--ease-out), color var(--dur-med) var(--ease-out);
+    transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-med) var(--ease-out), color var(--dur-med) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
   }
 
   .finance-action:hover {
@@ -89,13 +94,16 @@
     color: var(--color-ink-muted);
     font-size: var(--text-xs);
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   .finance-display {
     font-family: var(--font-display);
-    font-size: var(--text-display);
-    line-height: 0.95;
-    letter-spacing: 0;
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
     overflow-wrap: anywhere;
   }
 }

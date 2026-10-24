@@ -1,8 +1,6 @@
 "use client";
 
-import { formatCurrency } from "@/lib/utils";
-import { cn } from "@/lib/utils";
-import { Receipt } from "lucide-react";
+import { formatCurrency, cn } from "@/lib/utils";
 
 interface CategoryItemProps {
   name: string;
@@ -14,45 +12,67 @@ interface CategoryItemProps {
 export default function CategoryItem({ name, spent, budget, onClick }: CategoryItemProps) {
   const percentage = budget ? Math.min((spent / budget) * 100, 100) : 0;
   const isOverBudget = budget ? spent > budget : false;
+  const remaining = budget ? budget - spent : null;
 
   return (
-    <div 
+    <div
       onClick={onClick}
-      className="finance-card p-4 space-y-3 active:scale-[0.98] transition-transform cursor-pointer"
+      role="button"
+      tabIndex={0}
+      className="p-4 rounded-xl bg-base-100 border border-base-300 hover:border-primary/40 transition-all cursor-pointer group active:scale-[0.99] select-none"
     >
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-4">
-          <div className="bg-base-200 p-2.5 rounded-xl text-base-content/60">
-            <Receipt size={20} />
-          </div>
-          <div>
-            <h4 className="text-base font-bold text-base-content">{name}</h4>
-            <p className="text-sm font-normal text-base-content/50">
-              {budget ? `ตั้งไว้ ${formatCurrency(budget)}` : "ยังไม่ได้ตั้งงบ"}
-            </p>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className={cn("text-base font-semibold", isOverBudget ? "text-error" : "text-base-content")}>
-            {formatCurrency(spent)}
-          </p>
+      <div className="flex justify-between items-baseline mb-2">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-sm text-base-content group-hover:text-primary transition-colors">
+            {name}
+          </span>
           {budget && (
-            <p className="text-[10px] text-gray-400">
-              ใช้ไป {((spent / budget) * 100).toFixed(0)}%
-            </p>
+            <span
+              className={cn(
+                "text-[10px] font-semibold px-2 py-0.5 rounded-md tabular-nums",
+                isOverBudget
+                  ? "bg-error/10 text-error font-bold"
+                  : percentage >= 80
+                  ? "bg-warning/10 text-warning"
+                  : "bg-base-200 text-base-content/60"
+              )}
+            >
+              {((spent / budget) * 100).toFixed(0)}%
+            </span>
+          )}
+        </div>
+
+        <div className="text-right">
+          <span className={cn("tabular-nums text-sm font-bold", isOverBudget ? "text-error" : "text-base-content")}>
+            {formatCurrency(spent)}
+          </span>
+          {budget && (
+            <span className="tabular-nums text-xs text-base-content/40 ml-1">
+              / {formatCurrency(budget)}
+            </span>
           )}
         </div>
       </div>
 
       {budget && (
-        <div className="w-full bg-base-200 rounded-xl h-2 overflow-hidden">
-          <div
-            className={cn(
-              "h-full rounded-xl transition-all duration-500",
-              isOverBudget ? "bg-error" : "bg-primary"
-            )}
-            style={{ width: `${percentage}%` }}
-          />
+        <div className="space-y-1.5">
+          <div className="w-full bg-base-200 rounded-full h-1.5 overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                isOverBudget ? "bg-error" : percentage >= 80 ? "bg-warning" : "bg-primary"
+              )}
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+          {remaining !== null && (
+            <div className="flex justify-between text-[11px] text-base-content/50">
+              <span>{isOverBudget ? "เกินงบแล้ว" : "งบคงเหลือ"}</span>
+              <span className={cn("tabular-nums font-medium", isOverBudget ? "text-error font-bold" : "text-base-content/70")}>
+                {isOverBudget ? `+${formatCurrency(Math.abs(remaining))}` : formatCurrency(remaining)}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>

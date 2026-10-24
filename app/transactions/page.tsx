@@ -3,23 +3,35 @@
 import Header from "@/components/ui/Header";
 import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { useTransactions, groupTransactionsByDate } from "@/hooks/useTransactions";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 import dayjs from "dayjs";
-import { ArrowLeft, Search, SlidersHorizontal, CreditCard, Receipt, TrendingUp, TrendingDown, Calendar, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Search,
+  SlidersHorizontal,
+  CreditCard,
+  Receipt,
+  TrendingUp,
+  TrendingDown,
+  Calendar,
+  X,
+  Filter,
+} from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 import TransactionSheet from "@/components/transactions/TransactionSheet";
-import { cn } from "@/lib/utils";
 
 export default function TransactionsPage() {
   const { data: budget, isLoading: isBudgetLoading } = useMonthlyBudget();
   const { data: transactions, isLoading: isTransLoading } = useTransactions(budget?.id || null);
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<"all" | "cash" | "card">("all");
   const [filterDate, setFilterDate] = useState("");
-  const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "amount_desc" | "amount_asc">("date_desc");
-  
+  const [sortBy, setSortBy] = useState<
+    "date_desc" | "date_asc" | "amount_desc" | "amount_asc"
+  >("date_desc");
+
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
@@ -30,29 +42,32 @@ export default function TransactionsPage() {
 
     // Search filter
     if (searchTerm) {
-      result = result.filter(t => 
-        t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.category?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.card?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      result = result.filter(
+        (t) =>
+          t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          t.category?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          t.card?.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Type filter
     if (filterType === "cash") {
-      result = result.filter(t => t.category_id != null);
+      result = result.filter((t) => t.category_id != null);
     } else if (filterType === "card") {
-      result = result.filter(t => t.card_id != null);
+      result = result.filter((t) => t.card_id != null);
     }
 
     // Date filter
     if (filterDate) {
-      result = result.filter(t => dayjs(t.created_at).format("YYYY-MM-DD") === filterDate);
+      result = result.filter((t) => dayjs(t.created_at).format("YYYY-MM-DD") === filterDate);
     }
 
     // Sort
     result.sort((a, b) => {
-      if (sortBy === "date_desc") return dayjs(b.created_at).valueOf() - dayjs(a.created_at).valueOf();
-      if (sortBy === "date_asc") return dayjs(a.created_at).valueOf() - dayjs(b.created_at).valueOf();
+      if (sortBy === "date_desc")
+        return dayjs(b.created_at).valueOf() - dayjs(a.created_at).valueOf();
+      if (sortBy === "date_asc")
+        return dayjs(a.created_at).valueOf() - dayjs(b.created_at).valueOf();
       if (sortBy === "amount_desc") return Number(b.amount) - Number(a.amount);
       if (sortBy === "amount_asc") return Number(a.amount) - Number(b.amount);
       return 0;
@@ -69,176 +84,248 @@ export default function TransactionsPage() {
   const grouped = groupTransactionsByDate(filteredAndSortedTransactions);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50/30">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 p-6 flex items-center justify-between sticky top-0 z-20">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="p-2 hover:bg-gray-50 rounded-xl transition-colors">
-            <ArrowLeft size={24} className="text-gray-900" />
-          </Link>
-          <h1 className="text-xl font-black text-gray-900">รายการทั้งหมด</h1>
-        </div>
-      </div>
+    <div className="flex flex-col min-h-screen bg-base-200">
+      <Header />
 
-      <div className="flex-1 p-6 space-y-6">
-        {/* Filters & Search */}
-        <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="ค้นหาตามรายละเอียด หรือหมวดหมู่..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-white border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-base"
-            />
+      <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-6">
+        {/* Page Title & Breadcrumb */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="p-2 text-base-content/60 hover:text-base-content hover:bg-base-100 rounded-xl transition-colors"
+              title="กลับหน้าหลัก"
+            >
+              <ArrowLeft size={20} />
+            </Link>
+            <div>
+              <h1 className="text-base sm:text-lg font-bold text-base-content">
+                ประวัติรายการทั้งหมด
+              </h1>
+              <p className="text-xs text-base-content/60">
+                ค้นหา กรอง และตรวจสอบรายการใช้จ่ายทั้งหมดในรอบบิลนี้
+              </p>
+            </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide items-center">
-            {/* Specific Date Filter */}
-            <div className="relative min-w-[150px]">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" size={14} />
+          <span className="finance-chip px-3 py-1 text-xs font-bold text-base-content/70">
+            {filteredAndSortedTransactions.length} รายการ
+          </span>
+        </div>
+
+        {/* Filters Toolbar */}
+        <div className="finance-card p-4 sm:p-5 bg-base-100 border border-base-300 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+            {/* Search Input */}
+            <div className="sm:col-span-8 relative">
+              <Search
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40"
+                size={16}
+              />
+              <input
+                type="text"
+                placeholder="ค้นหารายละเอียด หมวดหมู่ หรือบัตร..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-base-200/50 border border-base-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+
+            {/* Date Picker */}
+            <div className="sm:col-span-4 relative">
+              <Calendar
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-primary pointer-events-none"
+                size={15}
+              />
               <input
                 type="date"
                 value={filterDate}
                 onChange={(e) => setFilterDate(e.target.value)}
                 className={cn(
-                  "w-full pl-9 pr-8 py-2 bg-white border rounded-xl text-xs font-bold focus:outline-none transition-all",
-                  filterDate ? "border-primary ring-1 ring-primary/20" : "border-gray-100"
+                  "w-full pl-9 pr-8 py-2.5 bg-base-200/50 border border-base-300 rounded-xl text-xs font-bold focus:outline-none focus:border-primary transition-colors",
+                  filterDate && "border-primary"
                 )}
               />
               {filterDate && (
-                <button 
+                <button
                   onClick={() => setFilterDate("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-error transition-colors"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-error"
+                  title="ล้างตัวกรองวันที่"
                 >
                   <X size={14} />
                 </button>
               )}
             </div>
-
-            <div className="h-6 w-[1px] bg-gray-200 mx-1 flex-shrink-0" />
-
-            <button 
-              onClick={() => setFilterType("all")}
-              className={cn(
-                "px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap",
-                filterType === "all" ? "bg-primary text-white" : "bg-white text-gray-400 border border-gray-100"
-              )}
-            >
-              ทั้งหมด
-            </button>
-            <button 
-              onClick={() => setFilterType("cash")}
-              className={cn(
-                "px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap flex items-center gap-2",
-                filterType === "cash" ? "bg-blue-500 text-white" : "bg-white text-gray-400 border border-gray-100"
-              )}
-            >
-              <Receipt size={14} /> เงินสด
-            </button>
-            <button 
-              onClick={() => setFilterType("card")}
-              className={cn(
-                "px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap flex items-center gap-2",
-                filterType === "card" ? "bg-orange-500 text-white" : "bg-white text-gray-400 border border-gray-100"
-              )}
-            >
-              <CreditCard size={14} /> บัตรเครดิต
-            </button>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-             <button 
-              onClick={() => setSortBy("date_desc")}
-              className={cn(
-                "px-3 py-2 rounded-xl text-[10px] font-black transition-all whitespace-nowrap flex items-center gap-1",
-                sortBy === "date_desc" ? "bg-gray-900 text-white" : "bg-white text-gray-400 border border-gray-100"
-              )}
-            >
-              <Calendar size={12} /> ใหม่ที่สุด
-            </button>
-            <button 
-              onClick={() => setSortBy("amount_desc")}
-              className={cn(
-                "px-3 py-2 rounded-xl text-[10px] font-black transition-all whitespace-nowrap flex items-center gap-1",
-                sortBy === "amount_desc" ? "bg-gray-900 text-white" : "bg-white text-gray-400 border border-gray-100"
-              )}
-            >
-              <TrendingUp size={12} /> มาก {">"} น้อย
-            </button>
-             <button 
-              onClick={() => setSortBy("amount_asc")}
-              className={cn(
-                "px-3 py-2 rounded-xl text-[10px] font-black transition-all whitespace-nowrap flex items-center gap-1",
-                sortBy === "amount_asc" ? "bg-gray-900 text-white" : "bg-white text-gray-400 border border-gray-100"
-              )}
-            >
-              <TrendingDown size={12} /> น้อย {">"} มาก
-            </button>
+          {/* Type & Sort Filter Chips */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-base-200">
+            {/* Type Filter */}
+            <div className="flex items-center gap-1.5 p-1 bg-base-200/70 rounded-xl border border-base-300/60">
+              <button
+                onClick={() => setFilterType("all")}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  filterType === "all"
+                    ? "bg-primary text-primary-content"
+                    : "text-base-content/60 hover:text-base-content hover:bg-base-100"
+                )}
+              >
+                ทั้งหมด
+              </button>
+              <button
+                onClick={() => setFilterType("cash")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  filterType === "cash"
+                    ? "bg-primary text-primary-content"
+                    : "text-base-content/60 hover:text-base-content hover:bg-base-100"
+                )}
+              >
+                <Receipt size={13} />
+                <span>เงินสด</span>
+              </button>
+              <button
+                onClick={() => setFilterType("card")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  filterType === "card"
+                    ? "bg-primary text-primary-content"
+                    : "text-base-content/60 hover:text-base-content hover:bg-base-100"
+                )}
+              >
+                <CreditCard size={13} />
+                <span>บัตรเครดิต</span>
+              </button>
+            </div>
+
+            {/* Sort Options */}
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-bold text-base-content/40 mr-1 hidden sm:inline">
+                เรียงตาม:
+              </span>
+              <button
+                onClick={() => setSortBy("date_desc")}
+                className={cn(
+                  "px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all",
+                  sortBy === "date_desc"
+                    ? "bg-base-content text-base-100"
+                    : "bg-base-200 text-base-content/60 hover:text-base-content"
+                )}
+              >
+                ล่าสุด
+              </button>
+              <button
+                onClick={() => setSortBy("amount_desc")}
+                className={cn(
+                  "px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all",
+                  sortBy === "amount_desc"
+                    ? "bg-base-content text-base-100"
+                    : "bg-base-200 text-base-content/60 hover:text-base-content"
+                )}
+              >
+                ยอดมากสุด
+              </button>
+              <button
+                onClick={() => setSortBy("amount_asc")}
+                className={cn(
+                  "px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all",
+                  sortBy === "amount_asc"
+                    ? "bg-base-content text-base-100"
+                    : "bg-base-200 text-base-content/60 hover:text-base-content"
+                )}
+              >
+                ยอดน้อยสุด
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* List */}
-        <div className="pb-24">
+        {/* Transactions List */}
+        <div>
           {isTransLoading || isBudgetLoading ? (
             <div className="flex justify-center p-12">
-              <span className="loading loading-spinner loading-lg text-primary"></span>
+              <span className="loading loading-spinner loading-lg text-primary" />
             </div>
           ) : filteredAndSortedTransactions.length === 0 ? (
-            <div className="text-center p-12 bg-white rounded-[2rem] border border-dashed border-gray-200">
-              <SlidersHorizontal size={48} className="mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500 font-medium italic">ไม่พบรายการที่ตรงตามเงื่อนไข</p>
+            <div className="text-center p-12 bg-base-100 rounded-xl border border-dashed border-base-300">
+              <SlidersHorizontal size={40} className="mx-auto text-base-content/30 mb-3" />
+              <p className="text-sm font-semibold text-base-content/60">ไม่พบรายการที่ค้นหา</p>
+              <p className="text-xs text-base-content/40 mt-1">ลองเปลี่ยนคำค้นหาหรือตัวกรอง</p>
             </div>
           ) : (
             <div className="space-y-6">
               {grouped.map(([date, items]) => (
                 <div key={date} className="space-y-2">
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
-                    {dayjs(date).format("D MMMM YYYY")}
-                  </h4>
-                  <div className="bg-white rounded-[2rem] border border-gray-100 divide-y divide-gray-50 overflow-hidden">
-                    {items.map((t) => (
-                      <div 
-                        key={t.id} 
-                        onClick={() => handleEdit(t)}
-                        className="flex items-center justify-between p-5 hover:bg-gray-50 transition-colors cursor-pointer active:scale-[0.98]"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={cn(
-                            "p-3 rounded-xl",
-                            t.card_id ? 'bg-orange-50 text-orange-500' : 'bg-blue-50 text-blue-500'
-                          )}>
-                            {t.card_id ? <CreditCard size={20} /> : <Receipt size={20} />}
-                          </div>
-                          <div>
-                            <p className="font-bold text-gray-900 text-base">
-                              {t.description || t.category?.name || t.card?.name || "ทั่วไป"}
-                            </p>
-                            {t.description && (t.category?.name || t.card?.name) && (
-                              <p className="text-[10px] text-gray-500 font-black uppercase tracking-wider">
-                                {t.category?.name || t.card?.name}
+                  <div className="flex items-center gap-2 px-1">
+                    <Calendar size={13} className="text-primary" />
+                    <h4 className="text-xs font-bold text-base-content/60">
+                      {dayjs(date).format("D MMMM YYYY")}
+                    </h4>
+                  </div>
+
+                  <div className="finance-card bg-base-100 border border-base-300 divide-y divide-base-200 overflow-hidden">
+                    {items.map((t) => {
+                      const isCreditCard = Boolean(t.card_id);
+                      const isIncome =
+                        t.category?.name?.includes("รายได้") ||
+                        t.description?.includes("รายได้");
+
+                      return (
+                        <div
+                          key={t.id}
+                          onClick={() => handleEdit(t)}
+                          className="flex items-center justify-between p-4 hover:bg-base-200/50 transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={cn(
+                                "p-2.5 rounded-xl shrink-0",
+                                isIncome
+                                  ? "bg-success/10 text-success"
+                                  : isCreditCard
+                                  ? "bg-purple-500/10 text-purple-600"
+                                  : "bg-primary/10 text-primary"
+                              )}
+                            >
+                              {isCreditCard ? <CreditCard size={18} /> : <Receipt size={18} />}
+                            </div>
+                            <div className="truncate">
+                              <p className="font-bold text-sm text-base-content truncate">
+                                {t.description || t.category?.name || t.card?.name || "ทั่วไป"}
                               </p>
-                            )}
+                              {t.description && (t.category?.name || t.card?.name) && (
+                                <p className="text-[11px] text-base-content/50 truncate">
+                                  {t.category?.name || t.card?.name}
+                                </p>
+                              )}
+                            </div>
                           </div>
+
+                          <p
+                            className={cn(
+                              "tabular-nums font-bold text-sm sm:text-base shrink-0 ml-3",
+                              isIncome
+                                ? "text-success"
+                                : isCreditCard
+                                ? "text-purple-600"
+                                : "text-error"
+                            )}
+                          >
+                            {isIncome ? "+" : "-"}{formatCurrency(t.amount)}
+                          </p>
                         </div>
-                        <p className={cn(
-                          "font-black text-lg tracking-tight",
-                          t.card_id ? 'text-gray-900' : 'text-error'
-                        )}>
-                          {t.card_id ? "" : "-"}{formatCurrency(t.amount)}
-                        </p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </div>
+      </main>
 
-      <TransactionSheet 
+      <TransactionSheet
         isOpen={isSheetOpen}
         onClose={() => setIsSheetOpen(false)}
         budgetId={budget?.id || 0}

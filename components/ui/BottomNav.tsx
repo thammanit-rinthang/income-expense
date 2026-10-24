@@ -14,36 +14,32 @@ import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/uiStore";
 
 const tabs = [
-  { name: "Home",    href: "/",        icon: LayoutDashboard },
-  { name: "Income",  href: "/income",  icon: Wallet },
-  { name: "Add",     isFab: true,      icon: Plus },
-  { name: "Loans",   href: "/loans",   icon: ReceiptRussianRuble },
-  { name: "Receive", href: "/receive", icon: ArrowDownLeft },
-  { name: "Cards",   href: "/cards",   icon: CreditCard },
+  { name: "หน้าหลัก", href: "/", icon: LayoutDashboard },
+  { name: "งบประมาณ", href: "/income", icon: Wallet },
+  { name: "บันทึก", isFab: true, icon: Plus },
+  { name: "หนี้สิน", href: "/loans", icon: ReceiptRussianRuble },
+  { name: "บัตร", href: "/cards", icon: CreditCard },
+  { name: "รับเงิน", href: "/receive", icon: ArrowDownLeft },
 ] as const;
 
 export default function BottomNav() {
-  const pathname  = usePathname();
+  const pathname = usePathname();
   const { openTransactionSheet } = useUIStore();
 
   return (
-    <>
-      {/* Spacer so page content doesn't hide behind the nav */}
-      <div className="h-24" />
+    <div className="lg:hidden">
+      {/* Spacer so page content does not hide behind bottom nav */}
+      <div className="h-20" />
 
-      <div className="fixed bottom-0 left-0 right-0 z-50">
-        {/* Blur backdrop that bleeds into the screen edge */}
-        <div className="absolute inset-0 bg-white/82 backdrop-blur-2xl border-t border-base-300/80" />
-
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-base-100 border-t border-base-300">
         <nav
-          className="finance-shell relative flex items-end justify-around px-2 pt-2"
-          style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom))" }}
+          className="flex items-center justify-around px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
         >
           {tabs.map((tab) => {
-            const isFab    = "isFab" in tab && tab.isFab;
-            const href     = "href" in tab ? tab.href : undefined;
+            const isFab = "isFab" in tab && tab.isFab;
+            const href = "href" in tab ? tab.href : undefined;
             const isActive = !isFab && pathname === href;
-            const Icon     = tab.icon;
+            const Icon = tab.icon;
 
             /* ── FAB ── */
             if (isFab) {
@@ -51,66 +47,55 @@ export default function BottomNav() {
                 <button
                   key={tab.name}
                   onClick={openTransactionSheet}
-                  aria-label="Add transaction"
-                  className="group flex flex-col items-center -mt-5 gap-1"
+                  aria-label="บันทึกรายการใหม่"
+                  className="group flex flex-col items-center -mt-5 gap-1 focus:outline-none"
                 >
                   <span
                     className={cn(
-                      "w-14 h-14 rounded-2xl flex items-center justify-center",
-                      "bg-primary",
-                      "ring-4 ring-primary/20",
-                      "transition-all duration-200",
-                      "group-hover:scale-105 group-hover:ring-primary/30 group-hover:rounded-xl",
-                      "group-active:scale-95"
+                      "w-12 h-12 rounded-2xl flex items-center justify-center",
+                      "bg-primary text-primary-content",
+                      "border-2 border-base-100",
+                      "transition-transform duration-150",
+                      "hover:scale-105 active:scale-95"
                     )}
                   >
-                    <Plus size={26} strokeWidth={2.5} className="text-primary-content" />
+                    <Plus size={24} strokeWidth={2.5} />
                   </span>
-                  <span className="text-[10px] font-medium text-gray-400">{tab.name}</span>
+                  <span className="text-[10px] font-bold text-primary">{tab.name}</span>
                 </button>
               );
             }
 
-            /* ── Regular tab ── */
+            /* ── Regular Tab ── */
             return (
               <Link
                 key={tab.name}
                 href={href as string}
-                className="group flex flex-col items-center gap-1 flex-1"
+                className="group flex flex-col items-center gap-1 min-w-[48px] py-1 text-center"
               >
-                {/* Icon pill */}
                 <span
                   className={cn(
-                    "relative flex items-center justify-center w-12 h-8 rounded-full transition-all duration-300",
+                    "relative flex items-center justify-center w-10 h-7 rounded-full transition-all duration-200",
                     isActive
                       ? "bg-primary/10"
-                      : "group-hover:bg-gray-100"
+                      : "group-hover:bg-base-200"
                   )}
                 >
                   <Icon
-                    size={19}
-                    strokeWidth={isActive ? 2.5 : 1.8}
+                    size={18}
+                    strokeWidth={isActive ? 2.4 : 1.8}
                     className={cn(
-                      "transition-all duration-300",
+                      "transition-colors duration-150",
                       isActive
-                        ? "text-primary scale-110"
-                        : "text-gray-400 group-hover:text-gray-600 group-hover:scale-105"
+                        ? "text-primary"
+                        : "text-base-content/50 group-hover:text-base-content"
                     )}
                   />
-
-                  {/* Active dot */}
-                  {isActive && (
-                    <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
-                  )}
                 </span>
-
-                {/* Label — always rendered to keep layout stable */}
                 <span
                   className={cn(
-                    "text-[10px] leading-none transition-all duration-300 font-semibold",
-                    isActive
-                      ? "text-primary font-semibold opacity-100"
-                      : "text-gray-400 opacity-70 group-hover:opacity-100 group-hover:text-gray-500"
+                    "text-[10px] font-bold leading-tight transition-colors",
+                    isActive ? "text-primary" : "text-base-content/50"
                   )}
                 >
                   {tab.name}
@@ -120,6 +105,6 @@ export default function BottomNav() {
           })}
         </nav>
       </div>
-    </>
+    </div>
   );
 }

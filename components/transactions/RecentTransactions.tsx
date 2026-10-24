@@ -6,19 +6,26 @@ import { cn, formatCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
 import { useState } from "react";
 import TransactionSheet from "./TransactionSheet";
+import { CreditCard, Receipt, TrendingUp } from "lucide-react";
 
 export default function RecentTransactions({ budgetId }: { budgetId: number }) {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  
+
   const { data: transactions, isLoading } = useTransactions(budgetId);
 
-  if (isLoading) return <div className="p-8 text-center"><span className="loading loading-spinner text-primary"></span></div>;
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center">
+        <span className="loading loading-spinner text-primary loading-sm"></span>
+      </div>
+    );
+  }
 
   if (!transactions || transactions.length === 0) {
     return (
-      <div className="finance-card p-8 text-center text-gray-400">
-        <p className="text-sm">ยังไม่มีรายการในเดือนนี้</p>
+      <div className="p-8 text-center text-base-content/40 bg-base-100 rounded-xl border border-dashed border-base-300">
+        <p className="text-sm">ยังไม่มีรายการใช้จ่ายในรอบนี้</p>
       </div>
     );
   }
@@ -28,48 +35,73 @@ export default function RecentTransactions({ budgetId }: { budgetId: number }) {
     setIsSheetOpen(true);
   };
 
-  const grouped = groupTransactionsByDate(transactions);
+  const grouped = groupTransactionsByDate(transactions.slice(0, 15));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {grouped.map(([date, items]) => (
-        <div key={date} className="space-y-3">
-          <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
+        <div key={date} className="space-y-1.5">
+          <div className="px-1 text-[11px] font-bold text-base-content/50 uppercase tracking-wider">
             {dayjs(date).format("D MMMM YYYY")}
-          </h4>
-          <div className="space-y-3">
+          </div>
+
+          <div className="bg-base-100 rounded-xl border border-base-300 divide-y divide-base-200 overflow-hidden">
             {items.map((t) => {
-              const isCreditCard = !!t.card_id;
-              const isIncome = t.category?.name?.includes("รายได้") || t.description?.includes("รายได้");
-              
+              const isCreditCard = Boolean(t.card_id);
+              const isIncome =
+                t.category?.name?.includes("รายได้") ||
+                t.description?.includes("รายได้");
+
               return (
-                <div 
-                  key={t.id} 
+                <div
+                  key={t.id}
                   onClick={() => handleEdit(t)}
-                  className="finance-card finance-action flex items-center justify-between p-4 hover:bg-base-200/50 cursor-pointer active:scale-[0.98]"
+                  role="button"
+                  tabIndex={0}
+                  className="flex items-center justify-between px-4 py-3.5 hover:bg-base-200/50 transition-colors cursor-pointer group active:bg-base-200"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={cn(
-                      "w-2 h-2 rounded-xl",
-                      isIncome ? "bg-success" : isCreditCard ? "bg-purple-500" : "bg-primary"
-                    )} />
-                    <div>
-                      <p className="text-base font-semibold text-base-content leading-tight">
-                        {t.description || t.category?.name || t.card?.name || "ทั่วไป"}
-                      </p>
-                      {t.description && (t.category?.name || t.card?.name) && (
-                        <p className="text-sm font-normal text-base-content/50">
-                          {t.category?.name || t.card?.name}
-                        </p>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={cn(
+                        "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
+                        isIncome
+                          ? "bg-success/10 text-success"
+                          : isCreditCard
+                          ? "bg-purple-500/10 text-purple-600"
+                          : "bg-primary/10 text-primary"
+                      )}
+                    >
+                      {isIncome ? (
+                        <TrendingUp size={16} />
+                      ) : isCreditCard ? (
+                        <CreditCard size={16} />
+                      ) : (
+                        <Receipt size={16} />
                       )}
                     </div>
+
+                    <div className="truncate">
+                      <p className="text-sm font-semibold text-base-content truncate group-hover:text-primary transition-colors">
+                        {t.description || t.category?.name || t.card?.name || "รายการทั่วไป"}
+                      </p>
+                      <p className="text-xs text-base-content/50 truncate">
+                        {t.category?.name || t.card?.name || (isCreditCard ? "บัตรเครดิต" : "เงินสด")}
+                      </p>
+                    </div>
                   </div>
-                  <p className={cn(
-                    "text-base font-semibold tracking-tight",
-                    isIncome ? 'text-success' : isCreditCard ? 'text-purple-600' : 'text-primary'
-                  )}>
+
+                  <span
+                    className={cn(
+                      "tabular-nums text-sm font-bold shrink-0 ml-3",
+                      isIncome
+                        ? "text-success"
+                        : isCreditCard
+                        ? "text-purple-600"
+                        : "text-error"
+                    )}
+                  >
                     {isIncome ? "+" : "-"}{formatCurrency(t.amount)}
-                  </p>
+                  </span>
                 </div>
               );
             })}
@@ -77,7 +109,7 @@ export default function RecentTransactions({ budgetId }: { budgetId: number }) {
         </div>
       ))}
 
-      <TransactionSheet 
+      <TransactionSheet
         isOpen={isSheetOpen}
         onClose={() => setIsSheetOpen(false)}
         budgetId={budgetId}
