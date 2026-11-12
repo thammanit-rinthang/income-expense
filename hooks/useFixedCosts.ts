@@ -8,8 +8,11 @@ export interface FixedCost {
   budget_id: number;
   name: string;
   amount: number;
+  due_date: string | null;
   is_paid: boolean;
 }
+
+export type SaveFixedCostInput = Omit<FixedCost, "id"> & { id?: number };
 
 export function useFixedCosts(budgetId: number | null) {
   return useQuery({
@@ -26,12 +29,12 @@ export function useFixedCosts(budgetId: number | null) {
 export function useSaveFixedCost() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (fixedCost: any) => {
+    mutationFn: async (fixedCost: SaveFixedCostInput) => {
       if (fixedCost.id) {
-        const { data } = await axios.patch("/api/fixed-costs", fixedCost);
+        const { data } = await axios.patch<FixedCost>("/api/fixed-costs", fixedCost);
         return data;
       } else {
-        const { data } = await axios.post("/api/fixed-costs", fixedCost);
+        const { data } = await axios.post<FixedCost>("/api/fixed-costs", fixedCost);
         return data;
       }
     },
@@ -45,8 +48,8 @@ export function useSaveFixedCost() {
 export function useBulkSaveFixedCosts() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ budgetId, items }: { budgetId: number; items: Array<{ name: string; amount: number }> }) => {
-      const { data } = await axios.post("/api/fixed-costs/bulk", { budget_id: budgetId, items });
+    mutationFn: async ({ budgetId, items }: { budgetId: number; items: Array<{ name: string; amount: number; due_date?: string | null }> }) => {
+      const { data } = await axios.post<FixedCost[]>("/api/fixed-costs/bulk", { budget_id: budgetId, items });
       return { budgetId, data };
     },
     onSuccess: (data) => {

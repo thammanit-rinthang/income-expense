@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "คนจะรวย - Budget & Expense SaaS",
+  title: "คนจะรวย - ระบบงบประมาณรายรับรายจ่าย",
   description: "ระบบจัดการงบประมาณและรายรับรายจ่ายส่วนบุคคลและครอบครัว",
 };
 

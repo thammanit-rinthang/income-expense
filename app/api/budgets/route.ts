@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import dayjs from "dayjs";
+import { z } from "zod";
+
+const createBudgetSchema = z.object({
+  person_name: z.string().trim().min(1),
+  month_year: z.string().optional(),
+  month: z.string().optional(),
+  total_income: z.coerce.number().nonnegative().default(0),
+  reserved_amount: z.coerce.number().nonnegative().default(0),
+}).refine((value) => Boolean(value.month_year || value.month), {
+  message: "month_year or month is required",
+});
 
 async function ensureReservedAmountColumn() {
   await prisma.$executeRawUnsafe(`
@@ -13,6 +24,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const personName = searchParams.get("person_name");
   const monthStr = searchParams.get("month");
+  const readOnly = searchParams.get("read_only") === "true";
 
   if (!personName || !monthStr) {
     return NextResponse.json({ error: "person_name and month are required" }, { status: 400 });
@@ -30,6 +42,10 @@ export async function GET(request: Request) {
         month_year: monthDate,
       },
     });
+
+    if (!budget && readOnly) {
+      return NextResponse.json(null);
+    }
 
     if (!budget) {
       // Create a default budget for the month if it doesn't exist
@@ -122,5 +138,87 @@ export async function PATCH(request: Request) {
   } catch (error) {
     console.error("Update budget error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = createBudgetSchema.parse(await request.json());
+    const monthValue = body.month_year || body.month || "";
+    const parsedMonth = dayjs(monthValue);
+    if (!parsedMonth.isValid()) {
+      return NextResponse.json({ error: "A valid month is required" }, { status: 400 });
+    }
+
+    await ensureReservedAmountColumn();
+    const monthDate = new Date(Date.UTC(parsedMonth.year(), parsedMonth.month(), 1));
+    const existingBudget = await prisma.monthlyBudget.findFirst({
+      where: { person_name: body.person_name, month_year: monthDate },
+      select: { id: true },
+    });
+    if (existingBudget) {
+      return NextResponse.json({ error: "A budget already exists for this person and month", id: existingBudget.id }, { status: 409 });
+    }
+
+    const budget = await prisma.monthlyBudget.create({
+      data: {
+        person_name: body.person_name,
+        month_year: monthDate,
+        total_income: body.total_income,
+        reserved_amount: body.reserved_amount,
+        remaining_spending_pool: body.total_income - body.reserved_amount,
+      },
+    });
+
+    return NextResponse.json(budget, { status: 201 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.flatten() }, { status: 400 });
+    }
+    console.error("Create budget error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = Number(searchParams.get("id"));
+
+  if (!Number.isInteger(id) || id < 1) {
+    return NextResponse.json({ error: "A valid budget ID is required" }, { status: 400 });
+  }
+
+  try {
+    const budget = await prisma.monthlyBudget.findUnique({
+      where: { id },
+      select: {
+        _count: {
+          select: {
+            fixed_costs: true,
+            categories: true,
+            transactions: true,
+            loan_payments: true,
+            card_payments: true,
+            loans: true,
+            received_payments: true,
+          },
+        },
+      },
+    });
+    if (!budget) {
+      return NextResponse.json({ error: "Budget not found" }, { status: 404 });
+    }
+    if (Object.values(budget._count).some((count) => count > 0)) {
+      return NextResponse.json(
+        { error: "Delete linked budget records before deleting this budget.", linkedRecords: budget._count },
+        { status: 409 },
+      );
+    }
+
+    await prisma.monthlyBudget.delete({ where: { id } });
+    return NextResponse.json({ success: true, id });
+  } catch (error) {
+    console.error("Delete budget error:", error);
+    return NextResponse.json({ error: "Unable to delete budget" }, { status: 404 });
   }
 }

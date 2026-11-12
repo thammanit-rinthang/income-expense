@@ -127,6 +127,65 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  const updateSchema = z.object({
+    id: z.coerce.number().int().positive(),
+    name: z.string().min(1).optional(),
+    monthly_budget: z.number().nonnegative().nullable().optional(),
+  }).refine((value) => value.name !== undefined || value.monthly_budget !== undefined, {
+    message: "At least one category field must be provided",
+  });
+
+  try {
+    const data = updateSchema.parse(await request.json());
+    const result = await prisma.$transaction(async (tx) => {
+      const currentCategory = await tx.budgetCategory.findUnique({ where: { id: data.id } });
+      if (!currentCategory) throw new Error("CATEGORY_NOT_FOUND");
+
+      const category = await tx.budgetCategory.update({
+        where: { id: data.id },
+        data: {
+          name: data.name,
+          monthly_budget: data.monthly_budget,
+        },
+      });
+      const oldBudget = Number(currentCategory.monthly_budget || 0);
+      const newBudget = Number(category.monthly_budget || 0);
+      const spentResult = await tx.transaction.aggregate({
+        where: { budget_id: category.budget_id, category_id: category.id, card_id: null },
+        _sum: { amount: true },
+      });
+      const spent = Number(spentResult._sum.amount || 0);
+      const oldExcess = Math.max(spent - oldBudget, 0);
+      const newExcess = Math.max(spent - newBudget, 0);
+      const poolAdjustment = -(newBudget - oldBudget) - (newExcess - oldExcess);
+
+      if (poolAdjustment !== 0) {
+        await tx.monthlyBudget.update({
+          where: { id: category.budget_id },
+          data: {
+            remaining_spending_pool: {
+              [poolAdjustment > 0 ? "increment" : "decrement"]: Math.abs(poolAdjustment),
+            },
+          },
+        });
+      }
+
+      return category;
+    });
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.flatten() }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
+    console.error("Update category error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

@@ -42,7 +42,7 @@ export default function DesktopSidebar() {
               คนจะรวย
             </span>
             <span className="text-[10px] text-base-content/40 uppercase tracking-wider block">
-              Budget & Expense
+              ระบบงบประมาณและรายจ่าย
             </span>
           </div>
         </Link>

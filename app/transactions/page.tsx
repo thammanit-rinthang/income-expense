@@ -2,7 +2,7 @@
 
 import Header from "@/components/ui/Header";
 import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
-import { useTransactions, groupTransactionsByDate } from "@/hooks/useTransactions";
+import { useTransactions, groupTransactionsByDate, Transaction } from "@/hooks/useTransactions";
 import { formatCurrency, cn } from "@/lib/utils";
 import dayjs from "dayjs";
 import {
@@ -11,11 +11,9 @@ import {
   SlidersHorizontal,
   CreditCard,
   Receipt,
-  TrendingUp,
-  TrendingDown,
   Calendar,
   X,
-  Filter,
+  Download,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
@@ -32,7 +30,7 @@ export default function TransactionsPage() {
     "date_desc" | "date_asc" | "amount_desc" | "amount_asc"
   >("date_desc");
 
-  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const filteredAndSortedTransactions = useMemo(() => {
@@ -52,7 +50,7 @@ export default function TransactionsPage() {
 
     // Type filter
     if (filterType === "cash") {
-      result = result.filter((t) => t.category_id != null);
+      result = result.filter((t) => t.card_id == null);
     } else if (filterType === "card") {
       result = result.filter((t) => t.card_id != null);
     }
@@ -76,12 +74,36 @@ export default function TransactionsPage() {
     return result;
   }, [transactions, searchTerm, filterType, filterDate, sortBy]);
 
-  const handleEdit = (t: any) => {
+  const handleEdit = (t: Transaction) => {
     setSelectedTransaction(t);
     setIsSheetOpen(true);
   };
 
   const grouped = groupTransactionsByDate(filteredAndSortedTransactions);
+
+  const handleExportCsv = () => {
+    const rows = [
+      ["วันที่", "รายละเอียด", "หมวดหมู่", "ประเภทการชำระ", "บัตร", "จำนวนเงิน (บาท)"],
+      ...filteredAndSortedTransactions.map((transaction) => [
+        dayjs(transaction.created_at).format("YYYY-MM-DD"),
+        transaction.description,
+        transaction.category?.name || "ไม่ระบุหมวด",
+        transaction.card_id ? "บัตรเครดิต" : "เงินสด / งบ",
+        transaction.card?.name || "",
+        Number(transaction.amount).toFixed(2),
+      ]),
+    ];
+    const csv = `\uFEFF${rows
+      .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
+      .join("\r\n")}`;
+    const file = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `รายการใช้จ่าย-${dayjs(budget?.month_year || new Date()).format("YYYY-MM")}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-base-200">
@@ -108,9 +130,21 @@ export default function TransactionsPage() {
             </div>
           </div>
 
-          <span className="finance-chip px-3 py-1 text-xs font-bold text-base-content/70">
-            {filteredAndSortedTransactions.length} รายการ
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="finance-chip px-3 py-1 text-xs font-bold text-base-content/70">
+              {filteredAndSortedTransactions.length} รายการ
+            </span>
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={filteredAndSortedTransactions.length === 0}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-base-300 bg-base-100 px-3 text-xs font-semibold text-base-content/70 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Download size={15} />
+              <span className="hidden sm:inline">ส่งออก CSV</span>
+              <span className="sm:hidden">CSV</span>
+            </button>
+          </div>
         </div>
 
         {/* Filters Toolbar */}
@@ -252,6 +286,18 @@ export default function TransactionsPage() {
               <SlidersHorizontal size={40} className="mx-auto text-base-content/30 mb-3" />
               <p className="text-sm font-semibold text-base-content/60">ไม่พบรายการที่ค้นหา</p>
               <p className="text-xs text-base-content/40 mt-1">ลองเปลี่ยนคำค้นหาหรือตัวกรอง</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm("");
+                  setFilterType("all");
+                  setFilterDate("");
+                  setSortBy("date_desc");
+                }}
+                className="mt-4 min-h-11 rounded-xl border border-base-300 px-4 text-xs font-semibold text-primary hover:bg-primary/5"
+              >
+                ล้างตัวกรอง
+              </button>
             </div>
           ) : (
             <div className="space-y-6">

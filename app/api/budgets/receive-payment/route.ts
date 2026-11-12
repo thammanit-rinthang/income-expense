@@ -9,6 +9,16 @@ const receivePaymentSchema = z.object({
   note: z.string().optional().default(""),
 });
 
+const updateReceivedPaymentSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  amount: z.coerce.number().positive().optional(),
+  sender: z.string().min(1).optional(),
+  note: z.string().optional(),
+  received_at: z.string().optional().nullable(),
+}).refine((data) => data.amount !== undefined || data.sender !== undefined || data.note !== undefined || data.received_at !== undefined, {
+  message: "At least one payment field must be provided",
+});
+
 export type ReceivePaymentPayload = z.infer<typeof receivePaymentSchema>;
 
 export interface ReceivedPayment {
@@ -110,6 +120,58 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Delete received payment error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const data = updateReceivedPaymentSchema.parse(await request.json());
+    const payment = await prisma.$transaction(async (tx) => {
+      const currentPayment = await tx.receivedPayment.findUnique({ where: { id: data.id } });
+      if (!currentPayment) throw new Error("PAYMENT_NOT_FOUND");
+
+      const nextAmount = data.amount ?? Number(currentPayment.amount);
+      const amountDelta = nextAmount - Number(currentPayment.amount);
+      const updatedPayment = await tx.receivedPayment.update({
+        where: { id: data.id },
+        data: {
+          amount: nextAmount,
+          sender: data.sender,
+          note: data.note,
+          received_at: data.received_at === undefined
+            ? undefined
+            : data.received_at
+            ? new Date(data.received_at)
+            : new Date(),
+        },
+      });
+
+      if (amountDelta !== 0) {
+        await tx.monthlyBudget.update({
+          where: { id: currentPayment.budget_id },
+          data: {
+            total_income: {
+              [amountDelta > 0 ? "increment" : "decrement"]: Math.abs(amountDelta),
+            },
+            remaining_spending_pool: {
+              [amountDelta > 0 ? "increment" : "decrement"]: Math.abs(amountDelta),
+            },
+          },
+        });
+      }
+      return updatedPayment;
+    });
+
+    return NextResponse.json(payment);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.flatten() }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "PAYMENT_NOT_FOUND") {
+      return NextResponse.json({ error: "Received payment not found" }, { status: 404 });
+    }
+    console.error("Update received payment error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

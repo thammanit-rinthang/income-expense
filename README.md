@@ -61,3 +61,11 @@ The codebase follows a highly maintainable directory structure:
 ### 6. Seamless UX & Error Handling
 *   **Immediate Feedback:** Optimistic updates and instant toast notifications (e.g., "จ่ายแล้ว!" - Paid!) are triggered upon successful mutations.
 *   **Intuitive Interactions:** Features a mobile-friendly layout with quick-action elements (like Floating Action Buttons for quick transaction entries) and streamlined modals for managing financial data.
+
+## MCP Automation
+
+This project includes a local stdio MCP server for AI automation. Start the Next.js app locally, then configure your MCP client to run `npm run --silent mcp` from the project root. The silent flag keeps npm output out of the MCP stdio channel. The server only connects to a local app URL; set `MCP_API_BASE_URL` when the app uses a local port other than `3000`.
+
+The `finance_read`, `finance_create`, `finance_update`, and `finance_delete` tools cover budgets, categories, fixed costs, transactions, loans and repayments, cards and payments, and received payments. Monthly summaries are read-only. Deletion tools require `confirm: true`.
+
+Tool details and example MCP client configuration are in [mcp/README.md](mcp/README.md).

@@ -10,6 +10,8 @@ const loanSchema = z.object({
   interest_rate: z.number().min(0),
   term_months: z.number().positive(),
   include_in_income: z.boolean().default(false),
+  is_paid: z.boolean().default(false),
+  start_date: z.string().optional(),
 });
 
 export async function GET(request: Request) {
@@ -27,7 +29,7 @@ export async function GET(request: Request) {
       orderBy: { created_at: "desc" },
     });
     return NextResponse.json(loans);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
@@ -46,7 +48,8 @@ export async function POST(request: Request) {
           principal: validatedData.principal,
           interest_rate: validatedData.interest_rate,
           term_months: validatedData.term_months,
-          start_date: new Date(),
+          start_date: validatedData.start_date ? new Date(validatedData.start_date) : new Date(),
+          is_paid: validatedData.is_paid,
           include_in_income: validatedData.include_in_income,
         },
       });

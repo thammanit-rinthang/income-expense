@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { budget_id, name, amount, is_paid } = body;
+    const { budget_id, name, amount, is_paid, due_date } = body;
 
     const fixedCost = await prisma.$transaction(async (tx) => {
       const fc = await tx.fixedCost.create({
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
           budget_id: parseInt(budget_id),
           name,
           amount: parseFloat(amount),
+          due_date: due_date ? new Date(due_date) : null,
           is_paid: is_paid || false,
         },
       });
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { id, name, amount, is_paid } = body;
+    const { id, name, amount, is_paid, due_date } = body;
 
     const result = await prisma.$transaction(async (tx) => {
       // Get current fixed cost state
@@ -76,6 +77,7 @@ export async function PATCH(request: Request) {
         data: {
           name,
           amount: amount !== undefined ? parseFloat(amount) : undefined,
+          due_date: due_date !== undefined ? (due_date ? new Date(due_date) : null) : undefined,
           is_paid: is_paid !== undefined ? is_paid : undefined,
         },
       });

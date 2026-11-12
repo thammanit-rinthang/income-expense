@@ -7,6 +7,8 @@ import { useState } from "react";
 import { useDeleteLoanPayment, LoanPayment } from "@/hooks/useLoans";
 import { toast } from "react-hot-toast";
 
+type LoanScheduleItem = ReturnType<typeof generateLoanSchedule>[number];
+
 interface LoanItemProps {
   id?: number;
   name: string;
@@ -48,7 +50,7 @@ export default function LoanItem({
 
   const schedule = generateLoanSchedule(principal, interestRate, termMonths, paid, startDate);
 
-  const handleToggleOrRevert = (item: any, idx: number) => {
+  const handleToggleOrRevert = (item: LoanScheduleItem, idx: number) => {
     if (!item.isPaid) {
       onPay();
     } else {
@@ -84,20 +86,20 @@ export default function LoanItem({
             <h4 className="font-black text-gray-900 truncate">{name}</h4>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider whitespace-nowrap">
-                Rem: {formatCurrency(remaining)}
+                คงเหลือ {formatCurrency(remaining)}
               </p>
               <span className="hidden xs:inline w-1 h-1 rounded-full bg-gray-300" />
               <div className="flex items-center gap-1 text-primary whitespace-nowrap">
                 <CalendarDays size={10} />
                 <p className="text-[10px] font-black uppercase">
-                  {formatCurrency(recalculatedMonthlyPayment)} / Mo
+                  {formatCurrency(recalculatedMonthlyPayment)} / เดือน
                 </p>
               </div>
               <span className="hidden xs:inline w-1 h-1 rounded-full bg-gray-300" />
               <div className="flex items-center gap-1 text-orange-500 whitespace-nowrap">
                 <Timer size={10} />
                 <p className="text-[10px] font-black uppercase">
-                  {monthsLeft} Mo left
+                  เหลือ {monthsLeft} เดือน
                 </p>
               </div>
             </div>
@@ -106,7 +108,7 @@ export default function LoanItem({
         <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-0 border-gray-50">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 mr-2">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Sch.</span>
+              <span className="text-xs font-semibold text-base-content/55">ตาราง</span>
               <input 
                 type="checkbox" 
                 className="toggle toggle-primary toggle-xs" 
@@ -130,9 +132,9 @@ export default function LoanItem({
           </div>
           <button 
             onClick={onPay}
-            className="btn btn-sm btn-outline btn-secondary rounded-xl px-4 text-xs font-bold"
+            className="btn btn-sm btn-outline btn-secondary min-h-11 rounded-xl px-4 text-xs font-bold"
           >
-            Pay Now
+            บันทึกชำระ
           </button>
         </div>
       </div>
@@ -140,7 +142,7 @@ export default function LoanItem({
       <div className="space-y-4">
         <div className="space-y-2">
           <div className="flex justify-between text-xs font-bold">
-            <span className="text-gray-400 uppercase tracking-tight">Progress</span>
+            <span className="text-base-content/55">ชำระคืนแล้ว</span>
             <span className="text-primary font-bold">{percentage.toFixed(1)}%</span>
           </div>
           <div className="w-full bg-base-200 rounded-full h-1.5 overflow-hidden">
@@ -150,8 +152,8 @@ export default function LoanItem({
             />
           </div>
           <div className="flex justify-between text-[10px] font-black text-gray-400 px-1 uppercase">
-            <span>Paid {formatCurrency(paid)}</span>
-            <span>Target {formatCurrency(principal)}</span>
+            <span>ชำระแล้ว {formatCurrency(paid)}</span>
+            <span>เงินต้น {formatCurrency(principal)}</span>
           </div>
         </div>
 
@@ -213,7 +215,7 @@ export default function LoanItem({
                         {formatCurrency(item.payment)}
                       </p>
                       <p className="text-[8px] text-gray-400 uppercase font-bold">
-                        {item.isPaid ? "Paid" : "Due"}
+                        {item.isPaid ? "ชำระแล้ว" : "ถึงกำหนด"}
                       </p>
                     </div>
                     {item.isPaid && (

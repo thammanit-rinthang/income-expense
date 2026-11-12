@@ -33,6 +33,23 @@ export function useMonthlyBudget() {
   });
 }
 
+export function usePreviousMonthlyBudget() {
+  const { currentUser } = useUserStore();
+  const { selectedMonth } = useMonthStore();
+  const previousMonth = dayjs(selectedMonth).subtract(1, "month").startOf("month");
+  const formattedMonth = previousMonth.format("YYYY-MM-DD");
+
+  return useQuery({
+    queryKey: ["monthly-budget-previous", currentUser, formattedMonth],
+    queryFn: async () => {
+      const { data } = await axios.get<MonthlyBudget | null>(
+        `/api/budgets?person_name=${encodeURIComponent(currentUser)}&month=${formattedMonth}&read_only=true`
+      );
+      return data;
+    },
+  });
+}
+
 export function useUpdateMonthlyBudget() {
   const queryClient = useQueryClient();
   const { currentUser } = useUserStore();

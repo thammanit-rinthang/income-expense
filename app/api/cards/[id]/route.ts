@@ -52,9 +52,28 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
 
-    await prisma.creditCard.delete({
+    const card = await prisma.creditCard.findUnique({
       where: { id },
+      select: {
+        statement_balance: true,
+        _count: { select: { transactions: true, payments: true } },
+      },
     });
+    if (!card) {
+      return NextResponse.json({ error: "Card not found" }, { status: 404 });
+    }
+    if (
+      Number(card.statement_balance) > 0 ||
+      card._count.transactions > 0 ||
+      card._count.payments > 0
+    ) {
+      return NextResponse.json(
+        { error: "Remove linked transactions and payments, and settle the balance before deleting this card." },
+        { status: 409 },
+      );
+    }
+
+    await prisma.creditCard.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete card:", error);

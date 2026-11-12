@@ -6,6 +6,7 @@ const paymentSchema = z.object({
   budget_id: z.number(),
   amount: z.number().positive(),
   note: z.string().optional(),
+  paid_at: z.string().optional(),
 });
 
 export async function POST(
@@ -27,7 +28,7 @@ export async function POST(
           budget_id: validatedData.budget_id,
           amount: validatedData.amount,
           note: validatedData.note || "",
-          paid_at: new Date(),
+          paid_at: validatedData.paid_at ? new Date(validatedData.paid_at) : new Date(),
         },
       });
 

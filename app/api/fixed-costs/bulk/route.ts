@@ -18,6 +18,7 @@ export async function POST(request: Request) {
             budget_id: parseInt(budget_id),
             name: item.name,
             amount: parseFloat(item.amount.toString()),
+            due_date: item.due_date ? new Date(item.due_date) : null,
             is_paid: false,
           },
         });

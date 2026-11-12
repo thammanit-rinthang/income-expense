@@ -17,6 +17,24 @@ const updatePaymentSchema = z.object({
   paid_at: z.string().optional().nullable(),
 });
 
+export async function GET(req: NextRequest) {
+  const budgetId = Number(new URL(req.url).searchParams.get("budget_id"));
+  if (!Number.isInteger(budgetId) || budgetId < 1) {
+    return NextResponse.json({ error: "A valid budget_id is required" }, { status: 400 });
+  }
+
+  try {
+    const payments = await prisma.cardPayment.findMany({
+      where: { budget_id: budgetId },
+      orderBy: { paid_at: "desc" },
+    });
+    return NextResponse.json(payments);
+  } catch (error) {
+    console.error("Failed to fetch budget card payments:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

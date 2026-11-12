@@ -77,6 +77,18 @@ export function useCardPayments(cardId: number | null, month?: string) {
   });
 }
 
+export function useBudgetCardPayments(budgetId: number | null) {
+  return useQuery({
+    queryKey: ["budget-card-payments", budgetId],
+    queryFn: async () => {
+      if (!budgetId) return [];
+      const { data } = await axios.get<CardPayment[]>(`/api/cards/payments?budget_id=${budgetId}`);
+      return data;
+    },
+    enabled: !!budgetId,
+  });
+}
+
 export function useSaveCard() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -122,6 +134,7 @@ export function useMakeCardPayment() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["credit-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-card-payments"] });
       queryClient.invalidateQueries({ queryKey: ["monthly-budget"] });
       queryClient.invalidateQueries({ queryKey: ["monthly-summary"] });
     },
@@ -137,6 +150,7 @@ export function useDeleteCardPayment() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["credit-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-card-payments"] });
       queryClient.invalidateQueries({ queryKey: ["card-payments", data.cardId] });
       queryClient.invalidateQueries({ queryKey: ["monthly-budget"] });
       queryClient.invalidateQueries({ queryKey: ["monthly-summary"] });

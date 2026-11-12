@@ -84,6 +84,8 @@ model FixedCost {
 
   amount Decimal
 
+  due_date DateTime? @db.Date
+
   is_paid Boolean @default(false)
 
   @@index([budget_id])

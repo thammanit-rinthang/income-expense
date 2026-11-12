@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -8,6 +8,7 @@ import BottomSheet from "@/components/ui/BottomSheet";
 import { useSaveTransaction, useDeleteTransaction, Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useCards } from "@/hooks/useCards";
+import { useUserStore } from "@/store/userStore";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
@@ -23,6 +24,86 @@ const schema = z.object({
   created_at: z.string().optional(),
 });
 
+type TransactionFormInput = z.input<typeof schema>;
+type TransactionFormValues = z.output<typeof schema>;
+
+interface EntryPreferences {
+  mode: "cash" | "card";
+  recentCategoryIds: number[];
+  recentCardIds: number[];
+}
+
+const EMPTY_ENTRY_PREFERENCES: EntryPreferences = {
+  mode: "cash",
+  recentCategoryIds: [],
+  recentCardIds: [],
+};
+const ENTRY_PREFERENCE_EVENT = "transaction-entry-preferences-change";
+const entryPreferenceCache = new Map<string, EntryPreferences>();
+const entryPreferenceKey = (userName: string) => `transaction-entry:${userName}`;
+
+function readEntryPreferences(userName: string): EntryPreferences {
+  const cached = entryPreferenceCache.get(userName);
+  if (cached) return cached;
+  if (typeof window === "undefined") return EMPTY_ENTRY_PREFERENCES;
+
+  let preferences = EMPTY_ENTRY_PREFERENCES;
+  try {
+    const rawValue = window.localStorage.getItem(entryPreferenceKey(userName));
+    if (rawValue) {
+      const parsed = JSON.parse(rawValue) as Partial<EntryPreferences>;
+      preferences = {
+        mode: parsed.mode === "card" ? "card" : "cash",
+        recentCategoryIds: Array.isArray(parsed.recentCategoryIds)
+          ? parsed.recentCategoryIds.filter((id): id is number => Number.isInteger(id))
+          : [],
+        recentCardIds: Array.isArray(parsed.recentCardIds)
+          ? parsed.recentCardIds.filter((id): id is number => Number.isInteger(id))
+          : [],
+      };
+    }
+  } catch {
+    preferences = EMPTY_ENTRY_PREFERENCES;
+  }
+  entryPreferenceCache.set(userName, preferences);
+  return preferences;
+}
+
+function writeEntryPreferences(userName: string, preferences: EntryPreferences) {
+  entryPreferenceCache.set(userName, preferences);
+  try {
+    window.localStorage.setItem(entryPreferenceKey(userName), JSON.stringify(preferences));
+  } catch {
+    // Saving the transaction does not depend on browser storage being available.
+  }
+  window.dispatchEvent(new CustomEvent(ENTRY_PREFERENCE_EVENT, { detail: userName }));
+}
+
+function useEntryPreferences(userName: string) {
+  const subscribe = useCallback((onChange: () => void) => {
+    if (typeof window === "undefined") return () => undefined;
+    const onPreferenceChange = (event: Event) => {
+      if (event.type === ENTRY_PREFERENCE_EVENT) {
+        if ((event as CustomEvent<string>).detail !== userName) return;
+      } else {
+        const storageEvent = event as StorageEvent;
+        if (storageEvent.key && storageEvent.key !== entryPreferenceKey(userName)) return;
+        entryPreferenceCache.delete(userName);
+      }
+      onChange();
+    };
+    window.addEventListener(ENTRY_PREFERENCE_EVENT, onPreferenceChange);
+    window.addEventListener("storage", onPreferenceChange);
+    return () => {
+      window.removeEventListener(ENTRY_PREFERENCE_EVENT, onPreferenceChange);
+      window.removeEventListener("storage", onPreferenceChange);
+    };
+  }, [userName]);
+  const getSnapshot = useCallback(() => readEntryPreferences(userName), [userName]);
+
+  return useSyncExternalStore(subscribe, getSnapshot, () => EMPTY_ENTRY_PREFERENCES);
+}
+
 interface TransactionSheetProps {
   isOpen: boolean;
   onClose: () => void;
@@ -36,22 +117,28 @@ export default function TransactionSheet({
   budgetId,
   transaction,
 }: TransactionSheetProps) {
+  const { currentUser } = useUserStore();
+  const entryPreferences = useEntryPreferences(currentUser);
   const { data: categories } = useCategories(budgetId);
   const { data: cards } = useCards();
   const { mutate: saveTransaction, isPending: isSaving } = useSaveTransaction();
   const { mutate: deleteTransaction, isPending: isDeleting } = useDeleteTransaction();
 
-  // Mode: "cash" (category) or "card" (credit card)
-  const [paymentMode, setPaymentMode] = useState<"cash" | "card">("cash");
+  const paymentMode = transaction
+    ? transaction.card_id
+      ? "card"
+      : "cash"
+    : entryPreferences.mode === "card" && cards?.length
+      ? "card"
+      : "cash";
 
   const {
     register,
     handleSubmit,
     reset,
     setValue,
-    watch,
     formState: { errors },
-  } = useForm({
+  } = useForm<TransactionFormInput, undefined, TransactionFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       budget_id: budgetId,
@@ -65,8 +152,6 @@ export default function TransactionSheet({
 
   useEffect(() => {
     if (transaction) {
-      const isCard = Boolean(transaction.card_id);
-      setPaymentMode(isCard ? "card" : "cash");
       reset({
         id: transaction.id,
         budget_id: transaction.budget_id,
@@ -77,33 +162,58 @@ export default function TransactionSheet({
         created_at: dayjs(transaction.created_at).format("YYYY-MM-DD"),
       });
     } else {
-      setPaymentMode("cash");
+      const preferences = readEntryPreferences(currentUser);
+      const recentCategoryId = preferences.recentCategoryIds.find((id) =>
+        categories?.some((category) => category.id === id)
+      ) ?? null;
+      const recentCardId = preferences.recentCardIds.find((id) =>
+        cards?.some((card) => card.id === id)
+      ) ?? null;
+      const useCardMode = preferences.mode === "card" && Boolean(cards?.length);
       reset({
         budget_id: budgetId,
         amount: 0,
         description: "",
-        category_id: null,
-        card_id: null,
+        category_id: useCardMode ? null : recentCategoryId,
+        card_id: useCardMode ? recentCardId ?? cards?.[0]?.id ?? null : null,
         created_at: dayjs().format("YYYY-MM-DD"),
       });
     }
-  }, [transaction, budgetId, reset]);
+  }, [transaction, budgetId, reset, currentUser, categories, cards, isOpen]);
 
   const handleModeSwitch = (mode: "cash" | "card") => {
-    setPaymentMode(mode);
+    writeEntryPreferences(currentUser, { ...entryPreferences, mode });
     if (mode === "cash") {
       setValue("card_id", null);
+      const recentCategoryId = entryPreferences.recentCategoryIds.find((id) =>
+        categories?.some((category) => category.id === id)
+      );
+      if (recentCategoryId) setValue("category_id", recentCategoryId);
     } else {
       setValue("category_id", null);
-      if (cards && cards.length > 0) {
-        setValue("card_id", cards[0].id);
-      }
+      const recentCardId = entryPreferences.recentCardIds.find((id) =>
+        cards?.some((card) => card.id === id)
+      );
+      const cardId = recentCardId ?? cards?.[0]?.id;
+      if (cardId) setValue("card_id", cardId);
     }
   };
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: TransactionFormValues) => {
     saveTransaction(data, {
       onSuccess: () => {
+        if (!transaction) {
+          const nextPreferences: EntryPreferences = {
+            mode: paymentMode,
+            recentCategoryIds: data.category_id
+              ? [data.category_id, ...entryPreferences.recentCategoryIds.filter((id) => id !== data.category_id)].slice(0, 3)
+              : entryPreferences.recentCategoryIds,
+            recentCardIds: data.card_id
+              ? [data.card_id, ...entryPreferences.recentCardIds.filter((id) => id !== data.card_id)].slice(0, 3)
+              : entryPreferences.recentCardIds,
+          };
+          writeEntryPreferences(currentUser, nextPreferences);
+        }
         toast.success(transaction ? "อัปเดตรายการแล้ว" : "บันทึกรายการสำเร็จ");
         onClose();
       },
@@ -142,7 +252,7 @@ export default function TransactionSheet({
             type="button"
             onClick={() => handleModeSwitch("cash")}
             className={cn(
-              "flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all",
+              "flex min-h-11 items-center justify-center gap-2 rounded-lg text-xs font-bold transition-all",
               paymentMode === "cash"
                 ? "bg-base-100 text-primary shadow-none border border-base-300"
                 : "text-base-content/60 hover:text-base-content"
@@ -155,7 +265,7 @@ export default function TransactionSheet({
             type="button"
             onClick={() => handleModeSwitch("card")}
             className={cn(
-              "flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all",
+              "flex min-h-11 items-center justify-center gap-2 rounded-lg text-xs font-bold transition-all",
               paymentMode === "card"
                 ? "bg-base-100 text-primary shadow-none border border-base-300"
                 : "text-base-content/60 hover:text-base-content"
@@ -212,6 +322,24 @@ export default function TransactionSheet({
                 </option>
               ))}
             </select>
+            {entryPreferences.recentCategoryIds.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-xs text-base-content/50">ใช้ล่าสุด</span>
+                {entryPreferences.recentCategoryIds
+                  .map((id) => categories?.find((category) => category.id === id))
+                  .filter((category): category is NonNullable<typeof category> => Boolean(category))
+                  .map((category) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => setValue("category_id", category.id)}
+                      className="min-h-11 rounded-lg border border-base-300 px-3 text-xs font-semibold text-base-content/70 hover:border-primary hover:text-primary"
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-1">
@@ -233,6 +361,24 @@ export default function TransactionSheet({
                 </option>
               ))}
             </select>
+            {entryPreferences.recentCardIds.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-xs text-base-content/50">ใช้ล่าสุด</span>
+                {entryPreferences.recentCardIds
+                  .map((id) => cards?.find((card) => card.id === id))
+                  .filter((card): card is NonNullable<typeof card> => Boolean(card))
+                  .map((card) => (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => setValue("card_id", card.id)}
+                      className="min-h-11 rounded-lg border border-base-300 px-3 text-xs font-semibold text-base-content/70 hover:border-primary hover:text-primary"
+                    >
+                      {card.name}
+                    </button>
+                  ))}
+              </div>
+            )}
           </div>
         )}
 

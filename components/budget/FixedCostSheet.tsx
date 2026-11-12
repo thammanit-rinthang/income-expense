@@ -15,8 +15,12 @@ const schema = z.object({
   budget_id: z.number(),
   name: z.string().min(1, "กรุณากรอกชื่อรายการ"),
   amount: z.coerce.number().min(0.01, "ยอดเงินต้องมากกว่า 0"),
+  due_date: z.string().optional().nullable(),
   is_paid: z.boolean().default(false),
 });
+
+type FixedCostFormInput = z.input<typeof schema>;
+type FixedCostFormValues = z.output<typeof schema>;
 
 interface FixedCostSheetProps {
   isOpen: boolean;
@@ -34,12 +38,13 @@ export default function FixedCostSheet({ isOpen, onClose, budgetId, fixedCost, o
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm({
+  } = useForm<FixedCostFormInput, undefined, FixedCostFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       budget_id: budgetId,
       name: "",
       amount: 0,
+      due_date: "",
       is_paid: false,
     },
   });
@@ -51,6 +56,7 @@ export default function FixedCostSheet({ isOpen, onClose, budgetId, fixedCost, o
         budget_id: fixedCost.budget_id,
         name: fixedCost.name,
         amount: fixedCost.amount,
+        due_date: fixedCost.due_date ? new Date(fixedCost.due_date).toISOString().slice(0, 10) : "",
         is_paid: fixedCost.is_paid,
       });
     } else {
@@ -58,13 +64,14 @@ export default function FixedCostSheet({ isOpen, onClose, budgetId, fixedCost, o
         budget_id: budgetId,
         name: "",
         amount: 0,
+        due_date: "",
         is_paid: false,
       });
     }
   }, [fixedCost, budgetId, reset]);
 
-  const onSubmit = (data: any) => {
-    saveFixedCost(data, {
+  const onSubmit = (data: FixedCostFormValues) => {
+    saveFixedCost({ ...data, due_date: data.due_date || null }, {
       onSuccess: () => {
         toast.success(fixedCost ? "อัปเดตรายการแล้ว" : "เพิ่มรายการแล้ว");
         onClose();
@@ -113,6 +120,20 @@ export default function FixedCostSheet({ isOpen, onClose, budgetId, fixedCost, o
             className={cn("input input-bordered rounded-xl text-base", errors.name && "input-error")}
           />
           {errors.name && <span className="text-error text-xs mt-1 px-1">{errors.name.message}</span>}
+        </div>
+
+        <div className="form-control">
+          <label className="label">
+            <span className="label-text font-bold">วันครบกำหนด (ถ้ามี)</span>
+          </label>
+          <input
+            {...register("due_date")}
+            type="date"
+            className="input input-bordered rounded-xl text-base min-h-11"
+          />
+          <span className="text-xs text-base-content/50 mt-1 px-1">
+            ระบบจะแสดงรายการใกล้ครบกำหนดบนหน้าภาพรวม
+          </span>
         </div>
 
         <div className="form-control">

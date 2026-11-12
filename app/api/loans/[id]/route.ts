@@ -10,7 +10,12 @@ const loanSchema = z.object({
   term_months: z.number().positive(),
   is_paid: z.boolean().optional(),
   include_in_income: z.boolean().optional(),
-  budget_id: z.number().optional(),
+  budget_id: z.number().int().positive().nullable().optional(),
+  start_date: z.string().optional(),
+});
+
+const updateLoanSchema = loanSchema.partial().refine((data) => Object.keys(data).length > 0, {
+  message: "At least one loan field must be provided",
 });
 
 export async function PATCH(
@@ -20,7 +25,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const validatedData = loanSchema.parse(body);
+    const validatedData = updateLoanSchema.parse(body);
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Get existing loan to check include_in_income status
@@ -29,6 +34,10 @@ export async function PATCH(
       });
 
       if (!existingLoan) throw new Error("Loan not found");
+
+      const nextPrincipal = validatedData.principal ?? Number(existingLoan.principal);
+      const nextBudgetId = validatedData.budget_id !== undefined ? validatedData.budget_id : existingLoan.budget_id;
+      const nextIncluded = validatedData.include_in_income ?? existingLoan.include_in_income;
 
       // 2. Update loan
       const loan = await tx.loan.update({
@@ -41,46 +50,36 @@ export async function PATCH(
           term_months: validatedData.term_months,
           is_paid: validatedData.is_paid,
           include_in_income: validatedData.include_in_income,
-          budget_id: validatedData.budget_id,
+          budget_id: nextBudgetId,
+          start_date: validatedData.start_date ? new Date(validatedData.start_date) : undefined,
         },
       });
 
-      // 3. Handle budget adjustment if include_in_income changed
-      const budgetId = validatedData.budget_id || existingLoan.budget_id;
-      
-      if (budgetId) {
-        const oldIncluded = existingLoan.include_in_income;
-        const newIncluded = validatedData.include_in_income ?? existingLoan.include_in_income;
+      // 3. Keep the loan amount synchronized with any budget that includes it as income.
+      const budgetAdjustments = new Map<number, number>();
+      if (existingLoan.include_in_income && existingLoan.budget_id) {
+        budgetAdjustments.set(existingLoan.budget_id, -Number(existingLoan.principal));
+      }
+      if (nextIncluded && nextBudgetId) {
+        budgetAdjustments.set(
+          nextBudgetId,
+          (budgetAdjustments.get(nextBudgetId) || 0) + nextPrincipal,
+        );
+      }
 
-        if (!oldIncluded && newIncluded) {
-          // Toggle ON: Add to budget
-          await tx.monthlyBudget.update({
-            where: { id: budgetId },
-            data: {
-              total_income: { increment: validatedData.principal },
-              remaining_spending_pool: { increment: validatedData.principal },
+      for (const [budgetId, adjustment] of budgetAdjustments) {
+        if (adjustment === 0) continue;
+        await tx.monthlyBudget.update({
+          where: { id: budgetId },
+          data: {
+            total_income: {
+              [adjustment > 0 ? "increment" : "decrement"]: Math.abs(adjustment),
             },
-          });
-        } else if (oldIncluded && !newIncluded) {
-          // Toggle OFF: Remove from budget (use existingLoan.principal for accuracy if principal changed, but usually we use the current one)
-          await tx.monthlyBudget.update({
-            where: { id: budgetId },
-            data: {
-              total_income: { decrement: existingLoan.principal },
-              remaining_spending_pool: { decrement: existingLoan.principal },
+            remaining_spending_pool: {
+              [adjustment > 0 ? "increment" : "decrement"]: Math.abs(adjustment),
             },
-          });
-        } else if (oldIncluded && newIncluded && !existingLoan.principal.equals(validatedData.principal)) {
-            // Principal changed while still included: Adjust the difference
-            const diff = Number(validatedData.principal) - Number(existingLoan.principal);
-            await tx.monthlyBudget.update({
-                where: { id: budgetId },
-                data: {
-                    total_income: { increment: diff },
-                    remaining_spending_pool: { increment: diff },
-                },
-            });
-        }
+          },
+        });
       }
 
       return loan;
@@ -117,6 +116,25 @@ export async function DELETE(
             remaining_spending_pool: { decrement: loan.principal },
           },
         });
+      }
+
+      if (loan) {
+        const payments = await tx.loanPayment.findMany({
+          where: { loan_id: loan.id },
+        });
+        const refundsByBudget = new Map<number, number>();
+        for (const payment of payments) {
+          refundsByBudget.set(
+            payment.budget_id,
+            (refundsByBudget.get(payment.budget_id) || 0) + Number(payment.amount),
+          );
+        }
+        for (const [budgetId, amount] of refundsByBudget) {
+          await tx.monthlyBudget.update({
+            where: { id: budgetId },
+            data: { remaining_spending_pool: { increment: amount } },
+          });
+        }
       }
 
       await tx.loan.delete({

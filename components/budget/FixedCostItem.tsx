@@ -3,6 +3,7 @@
 import { FixedCost } from "@/hooks/useFixedCosts";
 import { formatCurrency, cn } from "@/lib/utils";
 import { Home, Zap, Pencil, Trash2, Check } from "lucide-react";
+import dayjs from "dayjs";
 
 interface FixedCostItemProps {
   fixedCost: FixedCost;
@@ -34,7 +35,9 @@ export default function FixedCostItem({
               {fixedCost.name}
             </h4>
             <span className="text-[10px] text-base-content/40 uppercase tracking-wider block">
-              รายเดือน
+              {fixedCost.due_date
+                ? `ครบกำหนดวันที่ ${dayjs(fixedCost.due_date).date()}`
+                : "รายเดือน · ยังไม่กำหนดวันจ่าย"}
             </span>
           </div>
         </div>
@@ -66,14 +69,14 @@ export default function FixedCostItem({
           <button
             onClick={() => onEdit(fixedCost)}
             aria-label="แก้ไข"
-            className="p-1.5 rounded-lg text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors"
+            className="min-h-11 min-w-11 rounded-lg text-base-content/55 hover:text-base-content hover:bg-base-200 transition-colors"
           >
             <Pencil size={14} />
           </button>
           <button
             onClick={() => onDelete(fixedCost.id)}
             aria-label="ลบ"
-            className="p-1.5 rounded-lg text-base-content/40 hover:text-error hover:bg-error/10 transition-colors"
+            className="min-h-11 min-w-11 rounded-lg text-base-content/55 hover:text-error hover:bg-error/10 transition-colors"
           >
             <Trash2 size={14} />
           </button>

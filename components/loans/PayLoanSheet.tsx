@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import BottomSheet from "@/components/ui/BottomSheet";
@@ -29,7 +29,7 @@ interface PayLoanSheetProps {
 export default function PayLoanSheet({ isOpen, onClose, loan, budgetId }: PayLoanSheetProps) {
   const payLoan = usePayLoan();
 
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<FormInput>({
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<FormInput>({
     resolver: zodResolver(schema),
     defaultValues: {
       amount: "",
@@ -37,7 +37,7 @@ export default function PayLoanSheet({ isOpen, onClose, loan, budgetId }: PayLoa
     }
   });
 
-  const watchedAmount = watch("amount");
+  const watchedAmount = useWatch({ control, name: "amount" });
 
   const paidAmount = loan?.payments.reduce((acc, p) => acc + Number(p.amount), 0) || 0;
   const currentRemaining = (loan?.principal || 0) - paidAmount;
@@ -67,7 +67,7 @@ export default function PayLoanSheet({ isOpen, onClose, loan, budgetId }: PayLoa
       note: data.note,
     }, {
       onSuccess: () => {
-        toast.success(`Paid ${formatCurrency(data.amount)} to ${loan.name}`);
+        toast.success(`ชำระ ${formatCurrency(data.amount)} สำหรับ${loan.name}แล้ว`);
         reset();
         onClose();
       },

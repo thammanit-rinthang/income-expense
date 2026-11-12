@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import dayjs from "dayjs";
 import BottomSheet from "@/components/ui/BottomSheet";
-import { useFixedCosts, useBulkSaveFixedCosts, FixedCost } from "@/hooks/useFixedCosts";
+import { useFixedCosts, useBulkSaveFixedCosts } from "@/hooks/useFixedCosts";
+import type { MonthlyBudget } from "@/hooks/useMonthlyBudget";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
-import { Copy, Check, AlertCircle } from "lucide-react";
+import { Copy, AlertCircle } from "lucide-react";
 
 interface CopyFixedCostSheetProps {
   isOpen: boolean;
@@ -29,10 +30,10 @@ export default function CopyFixedCostSheet({
   const formattedPrevMonth = prevMonthDate.format("YYYY-MM-DD");
   
   // Fetch previous month's budget
-  const { data: prevBudget, isLoading: isLoadingPrevBudget, error: prevBudgetError } = useQuery({
+  const { data: prevBudget, isLoading: isLoadingPrevBudget } = useQuery<MonthlyBudget | null>({
     queryKey: ["monthly-budget-copy-source", personName, formattedPrevMonth],
     queryFn: async () => {
-      const { data } = await axios.get<any>(
+      const { data } = await axios.get<MonthlyBudget | null>(
         `/api/budgets?person_name=${personName}&month=${formattedPrevMonth}`
       );
       return data;
@@ -45,48 +46,36 @@ export default function CopyFixedCostSheet({
   
   const { mutate: bulkSave, isPending: isSaving } = useBulkSaveFixedCosts();
 
-  // Local state for checkboxes and edited amounts
-  const [selectedItems, setSelectedItems] = useState<{ [id: number]: boolean }>({});
-  const [amounts, setAmounts] = useState<{ [id: number]: string }>({});
-
-  // Prefill state once data is loaded
-  useEffect(() => {
-    if (prevFixedCosts) {
-      const initialSelection: { [id: number]: boolean } = {};
-      const initialAmounts: { [id: number]: string } = {};
-      
-      prevFixedCosts.forEach((fc) => {
-        initialSelection[fc.id] = true; // Checked by default
-        initialAmounts[fc.id] = fc.amount.toString();
-      });
-      
-      setSelectedItems(initialSelection);
-      setAmounts(initialAmounts);
-    }
-  }, [prevFixedCosts]);
+  const [editedBudgetId, setEditedBudgetId] = useState<number | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Record<number, boolean>>({});
+  const [amounts, setAmounts] = useState<Record<number, string>>({});
+  const selectedOverrides = editedBudgetId === prevBudget?.id ? selectedItems : {};
+  const amountOverrides = editedBudgetId === prevBudget?.id ? amounts : {};
 
   const handleToggleItem = (id: number) => {
-    setSelectedItems((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+    const currentSelection = selectedOverrides[id] ?? true;
+    setEditedBudgetId(prevBudget?.id ?? null);
+    setSelectedItems({ ...selectedOverrides, [id]: !currentSelection });
   };
 
   const handleAmountChange = (id: number, value: string) => {
-    setAmounts((prev) => ({
-      ...prev,
-      [id]: value,
-    }));
+    setEditedBudgetId(prevBudget?.id ?? null);
+    setAmounts({ ...amountOverrides, [id]: value });
   };
 
   const handleCopy = () => {
     if (!prevFixedCosts) return;
     
     const itemsToCopy = prevFixedCosts
-      .filter((fc) => selectedItems[fc.id])
+      .filter((fc) => selectedOverrides[fc.id] ?? true)
       .map((fc) => ({
         name: fc.name,
-        amount: parseFloat(amounts[fc.id] || "0") || 0,
+        amount: parseFloat(amountOverrides[fc.id] ?? fc.amount.toString()) || 0,
+        due_date: fc.due_date
+          ? dayjs(currentMonthYear)
+              .date(Math.min(dayjs(currentMonthYear).daysInMonth(), dayjs(fc.due_date).date()))
+              .format("YYYY-MM-DD")
+          : null,
       }));
 
     if (itemsToCopy.length === 0) {
@@ -110,7 +99,7 @@ export default function CopyFixedCostSheet({
 
   const isLoading = isLoadingPrevBudget || isLoadingFixedCosts;
   const prevMonthLabel = prevMonthDate.format("MMMM YYYY");
-  const selectedCount = Object.values(selectedItems).filter(Boolean).length;
+  const selectedCount = prevFixedCosts?.filter((fixedCost) => selectedOverrides[fixedCost.id] ?? true).length || 0;
 
   return (
     <BottomSheet
@@ -141,7 +130,7 @@ export default function CopyFixedCostSheet({
           <>
             <div className="max-h-[350px] overflow-y-auto pr-1 space-y-3">
               {prevFixedCosts.map((fc) => {
-                const isChecked = !!selectedItems[fc.id];
+                const isChecked = selectedOverrides[fc.id] ?? true;
                 return (
                   <div
                     key={fc.id}
@@ -171,7 +160,7 @@ export default function CopyFixedCostSheet({
                         type="number"
                         step="0.01"
                         disabled={!isChecked}
-                        value={amounts[fc.id] || ""}
+                        value={amountOverrides[fc.id] ?? fc.amount.toString()}
                         onChange={(e) => handleAmountChange(fc.id, e.target.value)}
                         className={cn(
                           "input input-bordered input-sm rounded-lg w-24 text-right font-bold text-sm",
