@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && node scripts/migrate-production-once.cjs && next build",
+    "build": "prisma generate && next build",
     "build:local": "prisma generate && next build",
     "db:migrate:deploy": "prisma migrate deploy",
     "mcp": "tsx mcp/server.ts",
