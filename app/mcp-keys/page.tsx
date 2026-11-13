@@ -151,9 +151,10 @@ export default function McpKeysPage() {
 
       <section className="space-y-3 rounded-xl border border-base-300 bg-base-100 p-5">
         <h2 className="font-bold">ตั้งค่าใน AI Agent</h2>
-        <p className="text-sm text-base-content/60">ตั้ง MCP endpoint นี้ แล้วส่ง API key ใน Authorization header</p>
+        <p className="text-sm text-base-content/60">ส่ง API key ผ่าน Authorization Bearer หรือ X-API-Key header ได้</p>
         <code className="block overflow-x-auto rounded-lg border border-base-300 bg-base-200/40 p-3 text-xs">https://income-ashy.vercel.app/api/mcp</code>
         <code className="block overflow-x-auto rounded-lg border border-base-300 bg-base-200/40 p-3 text-xs">Authorization: Bearer &lt;API key&gt;</code>
+        <code className="block overflow-x-auto rounded-lg border border-base-300 bg-base-200/40 p-3 text-xs">X-API-Key: &lt;API key&gt;</code>
         <p className="text-xs leading-5 text-base-content/50">
           ChatGPT connector ใช้ OAuth: เลือก OAuth ตอนเชื่อม MCP แล้วกรอก key ในหน้าอนุญาตของระบบ
         </p>

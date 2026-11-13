@@ -42,7 +42,9 @@ function unauthorizedResponse(requestUrl: string): Response {
 
 async function handleMcpRequest(request: Request): Promise<Response> {
   const authorization = request.headers.get("authorization") || "";
-  const accessToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  const bearerToken = authorization.match(/^Bearer\s+(.+)$/i)?.[1] || "";
+  const apiKeyHeader = request.headers.get("x-api-key") || "";
+  const accessToken = bearerToken || apiKeyHeader;
   if (!accessToken || accessToken.length > 256) return unauthorizedResponse(request.url);
 
   try {
