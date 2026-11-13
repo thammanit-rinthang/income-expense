@@ -4,7 +4,7 @@ import UserSwitcher from "./UserSwitcher";
 import MonthSelector from "./MonthSelector";
 import { useUIStore } from "@/store/uiStore";
 import { cn } from "@/lib/utils";
-import { Users, User } from "lucide-react";
+import { Users, User, KeyRound } from "lucide-react";
 import Link from "next/link";
 
 export default function Header() {
@@ -26,6 +26,14 @@ export default function Header() {
             </Link>
 
             <div className="flex items-center gap-1.5">
+              <Link
+                href="/mcp-keys"
+                aria-label="จัดการ MCP API keys"
+                title="จัดการ MCP API keys"
+                className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-base-content/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+              >
+                <KeyRound size={16} aria-hidden="true" />
+              </Link>
               {/* Personal / Combined Toggle */}
               <div className="flex items-center p-0.5 bg-base-200 rounded-lg" role="group" aria-label="เลือกมุมมองงบประมาณ">
                 <button

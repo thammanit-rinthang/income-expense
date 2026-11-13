@@ -10,6 +10,7 @@ import {
   CreditCard,
   ReceiptText,
   Plus,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/uiStore";
@@ -22,6 +23,7 @@ const navItems = [
   { name: "หนี้สิน", href: "/loans", icon: ReceiptRussianRuble },
   { name: "รับเงิน", href: "/receive", icon: ArrowDownLeft },
   { name: "ประวัติรายการ", href: "/transactions", icon: ReceiptText },
+  { name: "MCP API Keys", href: "/mcp-keys", icon: KeyRound },
 ];
 
 export default function DesktopSidebar() {

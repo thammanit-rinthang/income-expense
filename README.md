@@ -64,7 +64,7 @@ The codebase follows a highly maintainable directory structure:
 
 ## MCP Automation
 
-This project includes a local stdio MCP server for AI automation. Start the Next.js app locally, then configure your MCP client to run `npm run --silent mcp` from the project root. The silent flag keeps npm output out of the MCP stdio channel. The server only connects to a local app URL; set `MCP_API_BASE_URL` when the app uses a local port other than `3000`.
+This project includes a local stdio MCP server and a ChatGPT Cloud endpoint at `/api/mcp`. The cloud endpoint uses OAuth and per-person API keys for Bon and Ray; deployment settings and connection steps are in [mcp/README.md](mcp/README.md).
 
 The `finance_read`, `finance_create`, `finance_update`, and `finance_delete` tools cover budgets, categories, fixed costs, transactions, loans and repayments, cards and payments, and received payments. Monthly summaries are read-only. Deletion tools require `confirm: true`.
 

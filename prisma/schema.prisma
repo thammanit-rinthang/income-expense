@@ -237,3 +237,70 @@ model MonthlySummary {
 
   @@map("monthly_summaries")
 }
+
+model McpApiKey {
+  id          Int      @id @default(autoincrement())
+  person_name String
+  label       String
+  access_level String  @default("read_write")
+  key_prefix  String   @unique
+  key_hash    String   @unique
+  created_at  DateTime @default(now())
+  last_used_at DateTime?
+  revoked_at  DateTime?
+
+  authorization_codes McpAuthorizationCode[]
+  tokens              McpOAuthToken[]
+
+  @@index([person_name, revoked_at])
+  @@map("mcp_api_keys")
+}
+
+model McpOAuthClient {
+  client_id    String   @id
+  client_name  String?
+  redirect_uris Json
+  created_at   DateTime @default(now())
+
+  authorization_codes McpAuthorizationCode[]
+  tokens              McpOAuthToken[]
+
+  @@map("mcp_oauth_clients")
+}
+
+model McpAuthorizationCode {
+  code_hash       String   @id
+  client_id       String
+  api_key_id      Int
+  redirect_uri    String
+  code_challenge  String
+  resource        String
+  scope           String
+  expires_at      DateTime
+  created_at      DateTime @default(now())
+
+  client  McpOAuthClient @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
+  api_key McpApiKey      @relation(fields: [api_key_id], references: [id], onDelete: Cascade)
+
+  @@index([expires_at])
+  @@map("mcp_authorization_codes")
+}
+
+model McpOAuthToken {
+  token_hash  String   @id
+  token_type  String
+  client_id   String
+  api_key_id  Int
+  resource    String
+  scope       String
+  expires_at  DateTime
+  revoked_at  DateTime?
+  created_at  DateTime @default(now())
+
+  client  McpOAuthClient @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
+  api_key McpApiKey      @relation(fields: [api_key_id], references: [id], onDelete: Cascade)
+
+  @@index([api_key_id, token_type, revoked_at])
+  @@index([expires_at])
+  @@map("mcp_oauth_tokens")
+}
