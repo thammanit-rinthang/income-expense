@@ -1,6 +1,6 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { findActiveApiKey, getMcpPublicUrl, getMcpResourceUrl } from "@/lib/mcp-auth";
+import { findActiveApiKey, getMcpFinanceScopes, getMcpPublicUrl, getMcpResourceUrl } from "@/lib/mcp-auth";
 import {
   getRedirectUris,
   hashOAuthSecret,
@@ -148,13 +148,8 @@ export async function POST(request: Request) {
   const hiddenFields = { ...fields, resource: validated.resource };
   if (!apiKey) return safeHtmlErrorResponse(request.url, "The API key is invalid or has been revoked.", 401, hiddenFields);
 
-  const allowedScopes = apiKey.access_level === "read_write"
-    ? ["finance:read", "finance:write", "offline_access"]
-    : ["finance:read", "offline_access"];
-  const grantedScopes = validated.requestedScopes.filter((scope) => allowedScopes.includes(scope));
-  if (!grantedScopes.includes("finance:read")) {
-    return safeHtmlErrorResponse(request.url, "This key does not grant the requested access.", 403, hiddenFields);
-  }
+  const grantedScopes = getMcpFinanceScopes(apiKey.access_level);
+  if (validated.requestedScopes.includes("offline_access")) grantedScopes.push("offline_access");
 
   try {
     const authorizationCode = newOAuthSecret("mcp_code_");

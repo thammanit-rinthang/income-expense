@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { createPkceChallenge, getRedirectUris, hashOAuthSecret, isGeminiRedirectUri, issueOAuthTokenPair, oauthError } from "@/lib/mcp-oauth";
-import { getMcpResourceUrl } from "@/lib/mcp-auth";
+import { getMcpFinanceScopes, getMcpResourceUrl } from "@/lib/mcp-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -91,7 +91,16 @@ export async function POST(request: Request) {
 
       const requestedScopes = form.get("scope")?.split(/\s+/).filter(Boolean);
       const existingScopes = current.scope.split(" ").filter(Boolean);
-      if (requestedScopes?.some((scope) => !existingScopes.includes(scope)) || requestedScopes?.length === 0) {
+      const keyFinanceScopes = getMcpFinanceScopes(current.api_key.access_level);
+      const requestedOfflineAccess = requestedScopes?.includes("offline_access") || false;
+      if (
+        requestedScopes?.length === 0 ||
+        requestedScopes?.some((scope) =>
+          !["finance:read", "finance:write", "offline_access"].includes(scope) ||
+          (scope.startsWith("finance:") && !keyFinanceScopes.includes(scope)) ||
+          (scope === "offline_access" && !existingScopes.includes("offline_access"))
+        )
+      ) {
         return oauthError("invalid_scope");
       }
 
@@ -112,7 +121,10 @@ export async function POST(request: Request) {
           clientId,
           apiKeyId: apiKey.id,
           resource,
-          scope: requestedScopes?.join(" ") || current.scope,
+          scope: [
+            ...getMcpFinanceScopes(apiKey.access_level),
+            ...(requestedOfflineAccess || existingScopes.includes("offline_access") ? ["offline_access"] : []),
+          ].join(" "),
           ...(keepsRefreshToken ? { refreshToken } : {}),
         });
       });

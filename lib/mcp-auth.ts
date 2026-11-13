@@ -11,6 +11,12 @@ export interface McpIdentity {
   scopes: string[];
 }
 
+export function getMcpFinanceScopes(accessLevel: string): string[] {
+  return accessLevel === "read_write"
+    ? ["finance:read", "finance:write"]
+    : ["finance:read"];
+}
+
 export function hashSecret(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
@@ -98,7 +104,7 @@ export async function findActiveApiKeyIdentity(rawKey: string): Promise<McpIdent
     apiKeyId: apiKey.id,
     clientId: `api-key:${apiKey.key_prefix}`,
     personName: apiKey.person_name as McpPerson,
-    scopes: apiKey.access_level === "read_write" ? ["finance:read", "finance:write"] : ["finance:read"],
+    scopes: getMcpFinanceScopes(apiKey.access_level),
   };
 }
 
