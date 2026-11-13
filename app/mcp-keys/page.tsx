@@ -1,103 +1,63 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { KeyRound, Copy, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { useState } from "react";
+import Link from "next/link";
+import { Copy, KeyRound, ShieldCheck } from "lucide-react";
 
-interface ApiKeyRecord {
+type McpPerson = "Bon" | "Ray";
+type AccessLevel = "read_only" | "read_write";
+
+interface CreatedApiKey {
   id: number;
-  person_name: "Bon" | "Ray";
+  person_name: McpPerson;
   label: string;
-  access_level: "read_only" | "read_write";
-  key_prefix: string;
-  created_at: string;
-  last_used_at: string | null;
-  revoked_at: string | null;
-}
-
-interface CreatedApiKey extends ApiKeyRecord {
+  access_level: AccessLevel;
   api_key: string;
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return "ยังไม่เคยใช้";
-  return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-}
-
 export default function McpKeysPage() {
-  const [adminSecret, setAdminSecret] = useState("");
-  const [personName, setPersonName] = useState<"Bon" | "Ray">("Bon");
-  const [label, setLabel] = useState("ChatGPT Cloud");
-  const [accessLevel, setAccessLevel] = useState<"read_only" | "read_write">("read_write");
-  const [keys, setKeys] = useState<ApiKeyRecord[]>([]);
-  const [createdKey, setCreatedKey] = useState<CreatedApiKey | null>(null);
+  const [label, setLabel] = useState("AI Agent");
+  const [accessLevel, setAccessLevel] = useState<AccessLevel>("read_write");
+  const [createdKeys, setCreatedKeys] = useState<CreatedApiKey[]>([]);
+  const [copiedKeyId, setCopiedKeyId] = useState<number | null>(null);
+  const [busyPerson, setBusyPerson] = useState<McpPerson | null>(null);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [authorized, setAuthorized] = useState(false);
 
-  const loadKeys = useCallback(async (secret: string) => {
-    const response = await fetch("/api/mcp/keys", {
-      headers: { Authorization: `Bearer ${secret}` },
-      cache: "no-store",
-    });
-    const result = await response.json() as ApiKeyRecord[] | { error?: string };
-    if (!response.ok) throw new Error("error" in result ? result.error || "โหลด API keys ไม่สำเร็จ" : "โหลด API keys ไม่สำเร็จ");
-    setKeys(result as ApiKeyRecord[]);
-    setAuthorized(true);
-  }, []);
-
-  const authorize = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setBusy(true);
+  const createKey = async (personName: McpPerson) => {
+    setBusyPerson(personName);
     setError("");
-    try {
-      await loadKeys(adminSecret);
-    } catch (loadError) {
-      setAuthorized(false);
-      setError(loadError instanceof Error ? loadError.message : "ยืนยันตัวตนไม่สำเร็จ");
-    } finally {
-      setBusy(false);
-    }
-  };
+    setCopiedKeyId(null);
 
-  const createKey = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    setCreatedKey(null);
     try {
       const response = await fetch("/api/mcp/keys", {
         method: "POST",
-        headers: { Authorization: `Bearer ${adminSecret}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ person_name: personName, label, access_level: accessLevel }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          person_name: personName,
+          label: label.trim() || "AI Agent",
+          access_level: accessLevel,
+        }),
+        cache: "no-store",
       });
       const result = await response.json() as CreatedApiKey | { error?: string };
-      if (!response.ok) throw new Error("error" in result ? result.error || "สร้าง API key ไม่สำเร็จ" : "สร้าง API key ไม่สำเร็จ");
-      setCreatedKey(result as CreatedApiKey);
-      await loadKeys(adminSecret);
+      if (!response.ok) {
+        throw new Error("error" in result ? result.error || "Could not generate an API key." : "Could not generate an API key.");
+      }
+
+      setCreatedKeys((current) => [result as CreatedApiKey, ...current]);
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "สร้าง API key ไม่สำเร็จ");
+      setError(createError instanceof Error ? createError.message : "Could not generate an API key.");
     } finally {
-      setBusy(false);
+      setBusyPerson(null);
     }
   };
 
-  const revokeKey = async (key: ApiKeyRecord) => {
-    if (!window.confirm(`ยกเลิก API key “${key.label}” ของ ${key.person_name}?`)) return;
-    setBusy(true);
-    setError("");
+  const copyKey = async (key: CreatedApiKey) => {
     try {
-      const response = await fetch(`/api/mcp/keys?id=${key.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${adminSecret}` },
-      });
-      const result = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(result.error || "ยกเลิก API key ไม่สำเร็จ");
-      if (createdKey?.id === key.id) setCreatedKey(null);
-      await loadKeys(adminSecret);
-    } catch (revokeError) {
-      setError(revokeError instanceof Error ? revokeError.message : "ยกเลิก API key ไม่สำเร็จ");
-    } finally {
-      setBusy(false);
+      await navigator.clipboard.writeText(key.api_key);
+      setCopiedKeyId(key.id);
+    } catch {
+      setError("Clipboard access was denied. Select and copy the key manually.");
     }
   };
 
@@ -108,114 +68,100 @@ export default function McpKeysPage() {
           <KeyRound size={22} aria-hidden="true" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-base-content">API keys สำหรับ MCP</h1>
-          <p className="mt-1 text-sm text-base-content/60">ออกคีย์แยกตามบุคคลเพื่อเชื่อม ChatGPT Cloud</p>
+          <h1 className="text-xl font-bold text-base-content">สร้าง MCP API key</h1>
+          <p className="mt-1 text-sm text-base-content/60">สร้าง key แยกสำหรับ Bon หรือ Ray แล้วนำไปเชื่อมกับ AI Agent</p>
         </div>
       </header>
 
-      {!authorized ? (
-        <form onSubmit={authorize} className="space-y-4 rounded-xl border border-base-300 bg-base-100 p-5">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <ShieldCheck size={17} aria-hidden="true" />
-            ต้องใช้รหัสผู้ดูแล
-          </div>
-          <p className="text-sm text-base-content/60">ใส่ค่า MCP_KEY_ADMIN_SECRET ที่ตั้งไว้ใน Environment Variables ของ Vercel</p>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={adminSecret}
-            onChange={(event) => setAdminSecret(event.target.value)}
-            className="input input-bordered w-full rounded-xl"
-            aria-label="รหัสผู้ดูแล MCP"
-            required
-          />
-          {error && <p role="alert" className="text-sm text-error">{error}</p>}
-          <button className="btn btn-primary min-h-11 w-full rounded-xl" disabled={busy}>
-            {busy ? "กำลังตรวจสอบ…" : "เปิดหน้าจัดการคีย์"}
-          </button>
-        </form>
-      ) : (
-        <>
-          <form onSubmit={createKey} className="grid gap-4 rounded-xl border border-base-300 bg-base-100 p-5 sm:grid-cols-2">
-            <label className="form-control gap-2 text-sm font-medium">
-              <span>เจ้าของข้อมูล</span>
-              <select value={personName} onChange={(event) => setPersonName(event.target.value as "Bon" | "Ray")} className="select select-bordered w-full rounded-xl">
-                <option value="Bon">Bon</option>
-                <option value="Ray">Ray</option>
-              </select>
-            </label>
-            <label className="form-control gap-2 text-sm font-medium">
-              <span>ชื่อคีย์</span>
-              <input value={label} onChange={(event) => setLabel(event.target.value)} maxLength={80} className="input input-bordered w-full rounded-xl" required />
-            </label>
-            <label className="form-control gap-2 text-sm font-medium sm:col-span-2">
-              <span>สิทธิ์</span>
-              <select value={accessLevel} onChange={(event) => setAccessLevel(event.target.value as "read_only" | "read_write")} className="select select-bordered w-full rounded-xl">
-                <option value="read_write">อ่านและแก้ไขข้อมูล</option>
-                <option value="read_only">อ่านอย่างเดียว</option>
-              </select>
-            </label>
-            <button className="btn btn-primary min-h-11 rounded-xl sm:col-span-2" disabled={busy}>
-              สร้าง API key
-            </button>
-          </form>
+      <section className="space-y-5 rounded-xl border border-base-300 bg-base-100 p-5">
+        <div className="flex items-start gap-3 rounded-lg border border-base-300 bg-base-200/40 p-4">
+          <ShieldCheck className="mt-0.5 shrink-0 text-primary" size={18} aria-hidden="true" />
+          <p className="text-sm leading-6 text-base-content/70">
+            Key ผูกกับข้อมูลของคนที่เลือกเท่านั้น ระบบแสดง key เต็มให้คัดลอกหลังสร้าง และไม่สามารถเรียกดูซ้ำได้
+          </p>
+        </div>
 
-          {createdKey && (
-            <section className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-5" aria-live="polite">
+        <label className="form-control gap-2 text-sm font-medium">
+          <span>ชื่อที่ใช้แยก Agent</span>
+          <input
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+            maxLength={80}
+            className="input input-bordered w-full rounded-xl"
+            placeholder="เช่น n8n, ChatGPT, Finance Agent"
+          />
+        </label>
+
+        <label className="form-control gap-2 text-sm font-medium">
+          <span>สิทธิ์ของ key</span>
+          <select
+            value={accessLevel}
+            onChange={(event) => setAccessLevel(event.target.value as AccessLevel)}
+            className="select select-bordered w-full rounded-xl"
+          >
+            <option value="read_write">อ่าน สร้าง แก้ไข และลบ</option>
+            <option value="read_only">อ่านอย่างเดียว</option>
+          </select>
+        </label>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(["Bon", "Ray"] as const).map((personName) => (
+            <button
+              key={personName}
+              type="button"
+              className="btn btn-primary min-h-12 rounded-xl"
+              disabled={busyPerson !== null}
+              onClick={() => void createKey(personName)}
+            >
+              <KeyRound size={17} aria-hidden="true" />
+              {busyPerson === personName ? "กำลังสร้าง..." : `สร้าง key สำหรับ ${personName}`}
+            </button>
+          ))}
+        </div>
+
+        {error && <p role="alert" className="text-sm text-error">{error}</p>}
+      </section>
+
+      {createdKeys.length > 0 && (
+        <section className="space-y-4" aria-live="polite">
+          {createdKeys.map((key) => (
+            <article key={key.id} className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-5">
               <div>
-                <h2 className="font-bold">คีย์ใหม่ของ {createdKey.person_name}</h2>
-                <p className="mt-1 text-sm text-base-content/60">คัดลอกเก็บไว้ตอนนี้ คีย์ฉบับเต็มจะแสดงครั้งนี้ครั้งเดียว</p>
+                <h2 className="font-bold">{key.person_name} · {key.label}</h2>
+                <p className="mt-1 text-sm text-base-content/60">
+                  {key.access_level === "read_write" ? "อ่านและแก้ไขข้อมูลได้" : "อ่านข้อมูลได้อย่างเดียว"} คัดลอก key ไปเก็บในระบบ Agent ตอนนี้
+                </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <code className="min-w-0 flex-1 break-all rounded-lg border border-base-300 bg-base-100 p-3 text-xs">{createdKey.api_key}</code>
+                <code className="min-w-0 flex-1 break-all rounded-lg border border-base-300 bg-base-100 p-3 text-xs">{key.api_key}</code>
                 <button
                   type="button"
                   className="btn btn-outline min-h-11 rounded-xl"
-                  onClick={() => void navigator.clipboard.writeText(createdKey.api_key)}
-                  aria-label="คัดลอก API key"
+                  onClick={() => void copyKey(key)}
+                  aria-label={`คัดลอก API key ของ ${key.person_name}`}
                 >
-                  <Copy size={16} aria-hidden="true" /> คัดลอก
+                  <Copy size={16} aria-hidden="true" />
+                  {copiedKeyId === key.id ? "คัดลอกแล้ว" : "คัดลอก"}
                 </button>
               </div>
-            </section>
-          )}
-
-          <section className="space-y-3 rounded-xl border border-base-300 bg-base-100 p-5">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-bold">คีย์ที่ออกแล้ว</h2>
-              <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void loadKeys(adminSecret)}>
-                <RefreshCw size={15} aria-hidden="true" /> โหลดใหม่
-              </button>
-            </div>
-            {keys.length === 0 ? (
-              <p className="text-sm text-base-content/60">ยังไม่มี API key</p>
-            ) : (
-              <ul className="divide-y divide-base-300">
-                {keys.map((key) => (
-                  <li key={key.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="font-semibold">{key.person_name} · {key.label}</p>
-                      <p className="mt-1 break-all font-mono text-xs text-base-content/60">{key.key_prefix}…</p>
-                      <p className="mt-1 text-xs text-base-content/50">
-                        {key.access_level === "read_write" ? "อ่านและแก้ไข" : "อ่านอย่างเดียว"} · ใช้ล่าสุด {formatDate(key.last_used_at)}
-                      </p>
-                    </div>
-                    {key.revoked_at ? (
-                      <span className="badge badge-ghost">ยกเลิกแล้ว</span>
-                    ) : (
-                      <button type="button" className="btn btn-outline btn-error min-h-10 rounded-lg" disabled={busy} onClick={() => void revokeKey(key)}>
-                        <Trash2 size={15} aria-hidden="true" /> ยกเลิก
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </>
+            </article>
+          ))}
+        </section>
       )}
 
-      {error && authorized && <p role="alert" className="text-sm text-error">{error}</p>}
+      <section className="space-y-3 rounded-xl border border-base-300 bg-base-100 p-5">
+        <h2 className="font-bold">ตั้งค่าใน AI Agent</h2>
+        <p className="text-sm text-base-content/60">ตั้ง MCP endpoint นี้ แล้วส่ง API key ใน Authorization header</p>
+        <code className="block overflow-x-auto rounded-lg border border-base-300 bg-base-200/40 p-3 text-xs">https://income-ashy.vercel.app/api/mcp</code>
+        <code className="block overflow-x-auto rounded-lg border border-base-300 bg-base-200/40 p-3 text-xs">Authorization: Bearer &lt;API key&gt;</code>
+        <p className="text-xs leading-5 text-base-content/50">
+          ChatGPT connector ใช้ OAuth: เลือก OAuth ตอนเชื่อม MCP แล้วกรอก key ในหน้าอนุญาตของระบบ
+        </p>
+      </section>
+
+      <div className="text-sm">
+        <Link href="/mcp-keys/manage" className="link link-primary">จัดการและยกเลิก keys ที่สร้างไว้</Link>
+      </div>
     </main>
   );
 }

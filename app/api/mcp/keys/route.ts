@@ -35,8 +35,6 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const unauthorized = requireMcpAdminSecret(request);
-  if (unauthorized) return unauthorized;
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (contentLength > 4_096) return NextResponse.json({ error: "Request body is too large." }, { status: 413 });
 

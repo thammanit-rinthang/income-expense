@@ -8,6 +8,7 @@ const entitySchema = z.enum([
   "category",
   "fixed_cost",
   "transaction",
+  "card_transactions",
   "loan",
   "loan_payment",
   "card",
@@ -17,7 +18,7 @@ const entitySchema = z.enum([
 ]);
 
 type Entity = z.infer<typeof entitySchema>;
-type WriteEntity = Exclude<Entity, "summary">;
+type WriteEntity = Exclude<Entity, "summary" | "card_transactions">;
 type JsonRecord = Record<string, unknown>;
 type LoanRecord = JsonRecord & {
   id: number;
@@ -97,6 +98,16 @@ function filterCardPaymentsForPerson(value: unknown, budgetIds: Set<number>): Js
     (payment.budget_id === null ||
       (typeof payment.budget_id === "number" && budgetIds.has(payment.budget_id))),
   );
+}
+
+function filterCardTransactionsForPerson(value: unknown, categoryIds: Set<number>): JsonRecord[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter((transaction): transaction is JsonRecord => {
+    if (!isJsonRecord(transaction)) return false;
+    if (transaction.category === null) return true;
+    return isJsonRecord(transaction.category) && categoryIds.has(Number(transaction.category.id));
+  });
 }
 
 const createSchemas = {
@@ -486,7 +497,7 @@ export function createFinanceMcpServer(options: FinanceMcpServerOptions): McpSer
 server.registerTool(
   "finance_read",
   {
-    description: "Read budgets, categories, fixed costs, transactions, loans and repayments, cards and payments, received payments, or a monthly summary. API-key access is limited to its assigned person.",
+    description: "Read budgets, categories, fixed costs, transactions, card transactions and payments, loans and repayments, cards, received payments, or a monthly summary. API-key access is limited to its assigned person.",
     inputSchema: z.object({
       entity: entitySchema,
       personName: z.string().optional().describe("Budget owner, such as Bon or Ray."),
@@ -533,6 +544,17 @@ server.registerTool(
           new Set(cards.map((card) => card.id)),
           new Set(categories.map((category) => category.id)),
         );
+      }
+      case "card_transactions": {
+        const id = requireNumber(cardId, "cardId");
+        await assertCardAccess(id);
+        const transactions = await callApi(queryPath(`/api/cards/${id}/transactions`, { month }), "GET");
+        if (!owner || !Array.isArray(transactions)) return transactions;
+        const categories = await prisma.budgetCategory.findMany({
+          where: { budget: { person_name: owner } },
+          select: { id: true },
+        });
+        return filterCardTransactionsForPerson(transactions, new Set(categories.map((category) => category.id)));
       }
       case "loan": {
         const loans = await callApi(queryPath("/api/loans", { person_name: owner }), "GET");
@@ -616,6 +638,26 @@ server.registerTool(
       case "received_payment":
         return callApi("/api/budgets/receive-payment", "POST", payload);
     }
+  }),
+);
+
+server.registerTool(
+  "finance_create_fixed_costs_bulk",
+  {
+    description: "Create several unpaid fixed costs for one budget in a single operation. Each item needs a name and positive amount, and may include an ISO due_date.",
+    inputSchema: z.object({
+      budget_id: z.number().int().positive(),
+      items: z.array(z.object({
+        name: z.string().trim().min(1),
+        amount: z.number().positive(),
+        due_date: z.string().nullable().optional(),
+      })).min(1).max(100),
+    }),
+  },
+  async ({ budget_id, items }) => runTool(async () => {
+    assertScope("finance:write");
+    await assertBudgetAccess(budget_id);
+    return callApi("/api/fixed-costs/bulk", "POST", { budget_id, items });
   }),
 );
 

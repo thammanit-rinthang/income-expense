@@ -73,6 +73,35 @@ export async function findActiveApiKey(rawKey: string) {
   return apiKey;
 }
 
+async function markApiKeyUsed(apiKeyId: number): Promise<void> {
+  const now = new Date();
+  await prisma.mcpApiKey.updateMany({
+    where: {
+      id: apiKeyId,
+      revoked_at: null,
+      OR: [
+        { last_used_at: null },
+        { last_used_at: { lt: new Date(now.getTime() - 60_000) } },
+      ],
+    },
+    data: { last_used_at: now },
+  });
+}
+
+export async function findActiveApiKeyIdentity(rawKey: string): Promise<McpIdentity | null> {
+  const apiKey = await findActiveApiKey(rawKey);
+  if (!apiKey || !MCP_PEOPLE.includes(apiKey.person_name as McpPerson)) return null;
+
+  await markApiKeyUsed(apiKey.id);
+
+  return {
+    apiKeyId: apiKey.id,
+    clientId: `api-key:${apiKey.key_prefix}`,
+    personName: apiKey.person_name as McpPerson,
+    scopes: apiKey.access_level === "read_write" ? ["finance:read", "finance:write"] : ["finance:read"],
+  };
+}
+
 export async function findActiveOAuthIdentity(rawToken: string, resource: string): Promise<McpIdentity | null> {
   const tokenHash = hashSecret(rawToken);
   const token = await prisma.mcpOAuthToken.findUnique({
@@ -94,18 +123,7 @@ export async function findActiveOAuthIdentity(rawToken: string, resource: string
   const personName = token.api_key.person_name;
   if (!MCP_PEOPLE.includes(personName as McpPerson)) return null;
 
-  const now = new Date();
-  await prisma.mcpApiKey.updateMany({
-    where: {
-      id: token.api_key_id,
-      revoked_at: null,
-      OR: [
-        { last_used_at: null },
-        { last_used_at: { lt: new Date(now.getTime() - 60_000) } },
-      ],
-    },
-    data: { last_used_at: now },
-  });
+  await markApiKeyUsed(token.api_key_id);
 
   return {
     apiKeyId: token.api_key_id,

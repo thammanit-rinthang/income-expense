@@ -1,6 +1,6 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createFinanceMcpServer } from "@/mcp/create-server";
-import { findActiveOAuthIdentity, getMcpPublicUrl, getMcpResourceUrl } from "@/lib/mcp-auth";
+import { findActiveApiKeyIdentity, findActiveOAuthIdentity, getMcpPublicUrl, getMcpResourceUrl } from "@/lib/mcp-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,7 +47,10 @@ async function handleMcpRequest(request: Request): Promise<Response> {
 
   try {
     const resource = getMcpResourceUrl(request.url);
-    const identity = await findActiveOAuthIdentity(accessToken, resource);
+    const isPersonalApiKey = accessToken.startsWith("income_bon_") || accessToken.startsWith("income_ray_");
+    const identity = isPersonalApiKey
+      ? await findActiveApiKeyIdentity(accessToken)
+      : await findActiveOAuthIdentity(accessToken, resource);
     if (!identity || !identity.scopes.includes("finance:read")) return unauthorizedResponse(request.url);
     if (request.method !== "POST") return methodNotAllowedResponse();
 
