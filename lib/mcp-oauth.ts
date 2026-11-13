@@ -65,6 +65,34 @@ export function isChatGptRedirectUri(value: string): boolean {
   }
 }
 
+const GEMINI_REDIRECT_HOSTS = new Set([
+  "oauth-redirect.googleusercontent.com",
+  "oauth-redirect-sandbox.googleusercontent.com",
+  "oauth-redirect-test.googleusercontent.com",
+]);
+
+export function isGeminiRedirectUri(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      !url.port &&
+      GEMINI_REDIRECT_HOSTS.has(url.hostname) &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash &&
+      /^\/(r|a)\/[A-Za-z0-9_-]+$/.test(url.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function isSupportedMcpRedirectUri(value: string): boolean {
+  return isChatGptRedirectUri(value) || isGeminiRedirectUri(value);
+}
+
 export function getRedirectUris(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
@@ -87,15 +115,21 @@ export function renderApiKeyLoginForm(
   hiddenFields: Record<string, string>,
   message = "",
 ): Response {
+  const formActionHosts = [
+    "https://chatgpt.com",
+    "https://oauth-redirect.googleusercontent.com",
+    "https://oauth-redirect-sandbox.googleusercontent.com",
+    "https://oauth-redirect-test.googleusercontent.com",
+  ].join(" ");
   const hiddenInputs = Object.entries(hiddenFields)
     .map(([name, value]) => `<input type="hidden" name="${htmlEscape(name)}" value="${htmlEscape(value)}">`)
     .join("");
   const safeMessage = message ? `<p role="alert">${htmlEscape(message)}</p>` : "";
-  const document = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Connect Income Expense to ChatGPT</title><style>body{font:16px system-ui,sans-serif;background:#f7f8fa;color:#202735;margin:0;min-height:100vh;display:grid;place-items:center}.card{width:min(420px,calc(100% - 32px));box-sizing:border-box;background:white;border:1px solid #e2e6eb;border-radius:16px;padding:28px}h1{font-size:22px;margin:0 0 8px}p{color:#687385;line-height:1.5}label{display:block;font-weight:600;margin:20px 0 8px}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cbd2dc;border-radius:10px;font:inherit}button{width:100%;margin-top:16px;padding:12px;border:0;border-radius:10px;background:#166b5d;color:white;font:inherit;font-weight:700;cursor:pointer}[role=alert]{color:#a33232}</style></head><body><main class="card"><h1>Connect Income Expense to ChatGPT</h1><p>Enter the personal API key issued for your account. It grants ChatGPT access only to that person's financial data. Read/write keys can create, edit, and delete records.</p>${safeMessage}<form method="post" action="${htmlEscape(action)}">${hiddenInputs}<label for="api_key">Personal API key</label><input id="api_key" name="api_key" type="password" autocomplete="off" required maxlength="160"><button type="submit">Authorize ChatGPT Cloud</button></form></main></body></html>`;
+  const document = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Connect Income Expense</title><style>body{font:16px system-ui,sans-serif;background:#f7f8fa;color:#202735;margin:0;min-height:100vh;display:grid;place-items:center}.card{width:min(420px,calc(100% - 32px));box-sizing:border-box;background:white;border:1px solid #e2e6eb;border-radius:16px;padding:28px}h1{font-size:22px;margin:0 0 8px}p{color:#687385;line-height:1.5}label{display:block;font-weight:600;margin:20px 0 8px}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cbd2dc;border-radius:10px;font:inherit}button{width:100%;margin-top:16px;padding:12px;border:0;border-radius:10px;background:#166b5d;color:white;font:inherit;font-weight:700;cursor:pointer}[role=alert]{color:#a33232}</style></head><body><main class="card"><h1>Connect Income Expense</h1><p>Enter the personal API key issued for your account. It grants access only to that person's financial data. Actions depend on the key's access level.</p>${safeMessage}<form method="post" action="${htmlEscape(action)}">${hiddenInputs}<label for="api_key">Personal API key</label><input id="api_key" name="api_key" type="password" autocomplete="off" required maxlength="160"><button type="submit">Authorize connection</button></form></main></body></html>`;
   return new Response(document, {
     headers: noStoreHeaders({
       "Content-Type": "text/html; charset=utf-8",
-      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+      "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; form-action 'self' ${formActionHosts}; base-uri 'none'; frame-ancestors 'none'`,
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
     }),
@@ -109,10 +143,11 @@ export async function issueOAuthTokenPair(
     apiKeyId: number;
     resource: string;
     scope: string;
+    refreshToken?: string;
   },
 ): Promise<OAuthTokenPair> {
   const accessToken = newOAuthSecret("mcp_at_");
-  const refreshToken = newOAuthSecret("mcp_rt_");
+  const refreshToken = input.refreshToken || newOAuthSecret("mcp_rt_");
   const now = new Date();
   const accessExpiresAt = new Date(now.getTime() + 15 * 60 * 1000);
   const refreshExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -126,18 +161,26 @@ export async function issueOAuthTokenPair(
     },
   });
 
-  await tx.mcpOAuthToken.createMany({
-    data: [
-      {
-        token_hash: hashOAuthSecret(accessToken),
-        token_type: "access",
-        client_id: input.clientId,
-        api_key_id: input.apiKeyId,
-        resource: input.resource,
-        scope: input.scope,
-        expires_at: accessExpiresAt,
-      },
-      {
+  await tx.mcpOAuthToken.create({
+    data: {
+      token_hash: hashOAuthSecret(accessToken),
+      token_type: "access",
+      client_id: input.clientId,
+      api_key_id: input.apiKeyId,
+      resource: input.resource,
+      scope: input.scope,
+      expires_at: accessExpiresAt,
+    },
+  });
+
+  if (input.refreshToken) {
+    await tx.mcpOAuthToken.update({
+      where: { token_hash: hashOAuthSecret(refreshToken) },
+      data: { expires_at: refreshExpiresAt, scope: input.scope },
+    });
+  } else {
+    await tx.mcpOAuthToken.create({
+      data: {
         token_hash: hashOAuthSecret(refreshToken),
         token_type: "refresh",
         client_id: input.clientId,
@@ -146,8 +189,8 @@ export async function issueOAuthTokenPair(
         scope: input.scope,
         expires_at: refreshExpiresAt,
       },
-    ],
-  });
+    });
+  }
 
   return {
     access_token: accessToken,

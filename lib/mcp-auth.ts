@@ -28,7 +28,7 @@ export function secureEquals(left: string, right: string): boolean {
 export function getMcpPublicUrl(requestUrl?: string): URL {
   const configuredUrl = process.env.MCP_PUBLIC_URL;
   if (process.env.NODE_ENV === "production" && !configuredUrl) {
-    throw new Error("Set MCP_PUBLIC_URL to the public HTTPS origin before enabling ChatGPT Cloud MCP.");
+    throw new Error("Set MCP_PUBLIC_URL to the public HTTPS origin before enabling cloud MCP.");
   }
   const candidate = configuredUrl || (requestUrl ? new URL(requestUrl).origin : "http://127.0.0.1:3000");
   const parsed = new URL(candidate);

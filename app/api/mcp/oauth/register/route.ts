@@ -1,6 +1,6 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { isChatGptRedirectUri, isValidRedirectUri, newOAuthSecret, oauthError } from "@/lib/mcp-oauth";
+import { isSupportedMcpRedirectUri, isValidRedirectUri, newOAuthSecret, oauthError } from "@/lib/mcp-oauth";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     if (!parsed.success) return oauthError("invalid_client_metadata");
 
     const data = parsed.data;
-    if (data.redirect_uris.some((uri) => !isValidRedirectUri(uri) || !isChatGptRedirectUri(uri))) {
+    if (data.redirect_uris.some((uri) => !isValidRedirectUri(uri) || !isSupportedMcpRedirectUri(uri))) {
       return oauthError("invalid_redirect_uri");
     }
     if (data.token_endpoint_auth_method && data.token_endpoint_auth_method !== "none") {
@@ -48,11 +48,11 @@ export async function POST(request: Request) {
       return oauthError("invalid_client_metadata");
     }
 
-    const clientId = newOAuthSecret("chatgpt_");
+    const clientId = newOAuthSecret("mcp_client_");
     const client = await prisma.mcpOAuthClient.create({
       data: {
         client_id: clientId,
-        client_name: data.client_name || "ChatGPT",
+        client_name: data.client_name || "MCP client",
         redirect_uris: data.redirect_uris,
       },
     });

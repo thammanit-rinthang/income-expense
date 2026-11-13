@@ -16,7 +16,7 @@ const authorizeSchema = z.object({
   client_id: z.string().min(1).max(200),
   redirect_uri: z.string().url(),
   response_type: z.literal("code"),
-  state: z.string().max(512).optional(),
+  state: z.string().max(4_096).optional(),
   code_challenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
   code_challenge_method: z.literal("S256"),
   resource: z.string().url().optional(),
@@ -82,7 +82,7 @@ async function authorizationFailure(
       try {
         const redirect = new URL(redirectUri);
         redirect.searchParams.set("error", code);
-        if (fields.state !== undefined && fields.state.length <= 512) {
+        if (fields.state !== undefined && fields.state.length <= 4_096) {
           redirect.searchParams.set("state", fields.state);
         }
         redirect.searchParams.set("iss", getMcpPublicUrl(requestUrl).origin);

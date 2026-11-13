@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { createPkceChallenge, hashOAuthSecret, issueOAuthTokenPair, oauthError } from "@/lib/mcp-oauth";
+import { createPkceChallenge, getRedirectUris, hashOAuthSecret, isGeminiRedirectUri, issueOAuthTokenPair, oauthError } from "@/lib/mcp-oauth";
 import { getMcpResourceUrl } from "@/lib/mcp-auth";
 
 export const dynamic = "force-dynamic";
@@ -96,11 +96,14 @@ export async function POST(request: Request) {
       }
 
       const tokens = await prisma.$transaction(async (tx) => {
-        const rotation = await tx.mcpOAuthToken.updateMany({
-          where: { token_hash: refreshHash, token_type: "refresh", revoked_at: null, expires_at: { gt: new Date() } },
-          data: { revoked_at: new Date() },
-        });
-        if (rotation.count !== 1) throw new Error("REFRESH_TOKEN_REPLAYED");
+        const keepsRefreshToken = getRedirectUris(client.redirect_uris).some(isGeminiRedirectUri);
+        if (!keepsRefreshToken) {
+          const rotation = await tx.mcpOAuthToken.updateMany({
+            where: { token_hash: refreshHash, token_type: "refresh", revoked_at: null, expires_at: { gt: new Date() } },
+            data: { revoked_at: new Date() },
+          });
+          if (rotation.count !== 1) throw new Error("REFRESH_TOKEN_REPLAYED");
+        }
 
         const apiKey = await tx.mcpApiKey.findUnique({ where: { id: current.api_key_id } });
         if (!apiKey || apiKey.revoked_at) throw new Error("API_KEY_REVOKED");
@@ -110,6 +113,7 @@ export async function POST(request: Request) {
           apiKeyId: apiKey.id,
           resource,
           scope: requestedScopes?.join(" ") || current.scope,
+          ...(keepsRefreshToken ? { refreshToken } : {}),
         });
       });
 

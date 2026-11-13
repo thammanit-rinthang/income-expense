@@ -1,6 +1,6 @@
 # Income Expense MCP Server
 
-The project supports local stdio MCP and ChatGPT Cloud through a remote Streamable HTTP endpoint. ChatGPT Cloud uses OAuth; the per-person API key is entered once on the authorization page and exchanged for short-lived, scoped tokens.
+The project supports local stdio MCP and cloud MCP clients through a remote Streamable HTTP endpoint. Cloud clients use OAuth; the per-person API key is entered once on the authorization page and exchanged for short-lived, scoped tokens.
 
 ## Local MCP client
 
@@ -38,6 +38,14 @@ The authorization server supports OAuth authorization code with PKCE (S256), dyn
 MCP API keys authorize read/write calls to the MCP endpoint. Key generation is public by design; listing and revoking keys require the admin secret. The existing web-app `/api/*` routes do not use these keys or require app sign-in, so they remain directly accessible independently of MCP authorization.
 
 ChatGPT Pro currently supports custom MCP read/fetch actions; full write tools require Business, Enterprise, or Edu. Workspace permissions may also restrict adding custom MCP servers.
+
+## Gemini Connected Apps
+
+1. In Gemini Connected Apps, add `https://income-ashy.vercel.app/api/mcp` as the MCP server URL.
+2. Leave the advanced Client ID and Client secret fields blank; the server supports Dynamic Client Registration (DCR).
+3. Continue to the authorization page and enter the `income_bon_...` or `income_ray_...` key generated at `/mcp-keys`.
+
+The OAuth server accepts Google's official Connected Apps redirect hosts and `/r/` or `/a/` callback paths.
 
 ## Tools
 
