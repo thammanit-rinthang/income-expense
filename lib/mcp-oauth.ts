@@ -116,13 +116,6 @@ export function renderApiKeyLoginForm(
   message = "",
 ): Response {
   const actionUrl = new URL(action);
-  const formActionHosts = [
-    actionUrl.origin,
-    "https://chatgpt.com",
-    "https://oauth-redirect.googleusercontent.com",
-    "https://oauth-redirect-sandbox.googleusercontent.com",
-    "https://oauth-redirect-test.googleusercontent.com",
-  ].join(" ");
   const hiddenInputs = Object.entries(hiddenFields)
     .map(([name, value]) => `<input type="hidden" name="${htmlEscape(name)}" value="${htmlEscape(value)}">`)
     .join("");
@@ -131,7 +124,7 @@ export function renderApiKeyLoginForm(
   return new Response(document, {
     headers: noStoreHeaders({
       "Content-Type": "text/html; charset=utf-8",
-      "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; form-action 'self' ${formActionHosts}; base-uri 'none'; frame-ancestors 'none'`,
+      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action https:; base-uri 'none'; frame-ancestors 'none'",
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
     }),
