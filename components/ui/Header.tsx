@@ -1,14 +1,35 @@
 "use client";
 
+import { useEffect } from "react";
 import UserSwitcher from "./UserSwitcher";
 import MonthSelector from "./MonthSelector";
 import { useUIStore } from "@/store/uiStore";
+import { useMonthStore } from "@/store/monthStore";
 import { cn } from "@/lib/utils";
 import { Users, User, KeyRound } from "lucide-react";
 import Link from "next/link";
 
 export default function Header() {
   const { dashboardView, setDashboardView } = useUIStore();
+  const syncCurrentBudgetMonth = useMonthStore((state) => state.syncCurrentBudgetMonth);
+
+  useEffect(() => {
+    syncCurrentBudgetMonth();
+
+    const syncWhenVisible = () => {
+      if (document.visibilityState === "visible") syncCurrentBudgetMonth();
+    };
+    const intervalId = window.setInterval(syncCurrentBudgetMonth, 15 * 60 * 1000);
+
+    window.addEventListener("focus", syncCurrentBudgetMonth);
+    document.addEventListener("visibilitychange", syncWhenVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", syncCurrentBudgetMonth);
+      document.removeEventListener("visibilitychange", syncWhenVisible);
+    };
+  }, [syncCurrentBudgetMonth]);
 
   return (
     <header className="sticky top-0 z-20 border-b border-base-300 bg-base-100/90 backdrop-blur-md">

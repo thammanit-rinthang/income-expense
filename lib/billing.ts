@@ -1,5 +1,10 @@
 import dayjs from "dayjs";
 
+export function getCurrentBudgetMonth(now: Date = new Date()): Date {
+  const currentMonth = dayjs(now).startOf("month");
+  return (dayjs(now).date() >= 25 ? currentMonth.add(1, "month") : currentMonth).toDate();
+}
+
 /**
  * Returns the billing period for a given target month.
  * The period starts from the 25th of the previous month
