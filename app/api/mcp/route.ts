@@ -33,7 +33,7 @@ function unauthorizedResponse(requestUrl: string): Response {
     {
       status: 401,
       headers: {
-        "WWW-Authenticate": `Bearer resource_metadata="${metadataUrl}", scope="finance:read"`,
+        "WWW-Authenticate": `Bearer resource_metadata="${metadataUrl}", scope="finance:read finance:write"`,
         "Cache-Control": "no-store",
       },
     },
