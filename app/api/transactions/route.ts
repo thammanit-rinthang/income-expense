@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
 import { Prisma } from "@/app/generated/prisma/client";
+import { getBudgetMonthForDate } from "@/lib/billing";
+import dayjs from "dayjs";
 
 const transactionSchema = z.object({
   budget_id: z.number(),
@@ -11,6 +13,24 @@ const transactionSchema = z.object({
   description: z.string().optional().nullable().transform(val => val || ""),
   created_at: z.string().optional().nullable(),
 });
+
+function isBudgetMonthForDate(budgetMonth: Date, transactionDate: Date): boolean {
+  return dayjs(budgetMonth).format("YYYY-MM") === dayjs(getBudgetMonthForDate(transactionDate)).format("YYYY-MM");
+}
+
+function budgetPeriodError(expectedMonth: Date) {
+  const expected = dayjs(expectedMonth).format("YYYY-MM");
+  return NextResponse.json(
+    { error: `วันที่รายการนี้อยู่ในรอบงบ ${expected} (วันที่ 25–24) กรุณาเลือกงบเดือน ${expected} ก่อนบันทึก` },
+    { status: 409 },
+  );
+}
+
+class TransactionBudgetPeriodError extends Error {
+  constructor(readonly expectedMonth: Date) {
+    super("TRANSACTION_BUDGET_PERIOD_MISMATCH");
+  }
+}
 
 // Helper to calculate excess amount for a cash transaction being applied
 async function calculateExcessToApply(
@@ -125,6 +145,21 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const validatedData = transactionSchema.parse(body);
+    const transactionDate = validatedData.created_at ? new Date(validatedData.created_at) : new Date();
+    if (Number.isNaN(transactionDate.getTime())) {
+      return NextResponse.json({ error: "created_at must be a valid date" }, { status: 400 });
+    }
+    const selectedBudget = await prisma.monthlyBudget.findUnique({
+      where: { id: validatedData.budget_id },
+      select: { month_year: true },
+    });
+    if (!selectedBudget) {
+      return NextResponse.json({ error: "Budget not found" }, { status: 404 });
+    }
+    const expectedBudgetMonth = getBudgetMonthForDate(transactionDate);
+    if (!isBudgetMonthForDate(selectedBudget.month_year, transactionDate)) {
+      return budgetPeriodError(expectedBudgetMonth);
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       let deductAmount = 0;
@@ -202,6 +237,20 @@ export async function PATCH(request: Request) {
         throw new Error("Transaction not found");
       }
 
+      const updatedDate = created_at ? new Date(created_at) : oldTx.created_at;
+      if (Number.isNaN(updatedDate.getTime())) {
+        throw new Error("TRANSACTION_DATE_INVALID");
+      }
+      if (oldTx.budget_id) {
+        const budget = await tx.monthlyBudget.findUnique({
+          where: { id: oldTx.budget_id },
+          select: { month_year: true },
+        });
+        if (budget && !isBudgetMonthForDate(budget.month_year, updatedDate)) {
+          throw new TransactionBudgetPeriodError(getBudgetMonthForDate(updatedDate));
+        }
+      }
+
       // 2. Revert old balance effect
       if (oldTx.card_id) {
         await tx.creditCard.update({
@@ -265,6 +314,12 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof TransactionBudgetPeriodError) {
+      return budgetPeriodError(error.expectedMonth);
+    }
+    if (error instanceof Error && error.message === "TRANSACTION_DATE_INVALID") {
+      return NextResponse.json({ error: "created_at must be a valid date" }, { status: 400 });
+    }
     console.error("Update transaction error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

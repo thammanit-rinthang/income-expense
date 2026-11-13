@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useSyncExternalStore } from "react";
+import axios from "axios";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -217,8 +218,15 @@ export default function TransactionSheet({
         toast.success(transaction ? "อัปเดตรายการแล้ว" : "บันทึกรายการสำเร็จ");
         onClose();
       },
-      onError: () => {
-        toast.error("เกิดข้อผิดพลาด กรุณาลองใหม่");
+      onError: (error) => {
+        const responseMessage = axios.isAxiosError<{ error?: unknown }>(error)
+          ? error.response?.data?.error
+          : undefined;
+        toast.error(
+          typeof responseMessage === "string"
+            ? responseMessage
+            : "เกิดข้อผิดพลาด กรุณาลองใหม่"
+        );
       },
     });
   };

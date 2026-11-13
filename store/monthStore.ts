@@ -5,6 +5,7 @@ interface MonthState {
   selectedMonth: Date;
   hasManualMonthSelection: boolean;
   setSelectedMonth: (date: Date) => void;
+  goToCurrentBudgetMonth: () => void;
   syncCurrentBudgetMonth: () => void;
   nextMonth: () => void;
   prevMonth: () => void;
@@ -20,6 +21,10 @@ export const useMonthStore = create<MonthState>((set) => ({
   setSelectedMonth: (date) => set({
     selectedMonth: new Date(date.getFullYear(), date.getMonth(), 1),
     hasManualMonthSelection: true,
+  }),
+  goToCurrentBudgetMonth: () => set({
+    selectedMonth: getCurrentBudgetMonth(),
+    hasManualMonthSelection: false,
   }),
   syncCurrentBudgetMonth: () =>
     set((state) => {

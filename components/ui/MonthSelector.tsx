@@ -1,13 +1,14 @@
 "use client";
 
 import { useMonthStore } from "@/store/monthStore";
-import { getBillingPeriod } from "@/lib/billing";
+import { getBillingPeriod, getCurrentBudgetMonth } from "@/lib/billing";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import dayjs from "dayjs";
 
 export default function MonthSelector() {
-  const { selectedMonth, nextMonth, prevMonth } = useMonthStore();
+  const { selectedMonth, nextMonth, prevMonth, goToCurrentBudgetMonth } = useMonthStore();
   const { start, end } = getBillingPeriod(selectedMonth);
+  const isCurrentBudgetMonth = dayjs(selectedMonth).isSame(getCurrentBudgetMonth(), "month");
 
   const formattedMonth = dayjs(selectedMonth).format("MMMM YYYY");
   const formattedCycle = `${dayjs(start).format("D MMM")} – ${dayjs(end).format("D MMM")}`;
@@ -29,6 +30,16 @@ export default function MonthSelector() {
         <span className="text-[10px] text-base-content/40 tabular-nums">
           {formattedCycle}
         </span>
+        {!isCurrentBudgetMonth && (
+          <button
+            type="button"
+            onClick={goToCurrentBudgetMonth}
+            className="mt-1 rounded-md border border-base-300 px-2 py-0.5 text-[10px] font-medium text-primary"
+            aria-label="กลับไปรอบงบปัจจุบัน"
+          >
+            รอบปัจจุบัน
+          </button>
+        )}
       </div>
 
       <button
