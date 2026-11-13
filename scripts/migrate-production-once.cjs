@@ -4,6 +4,11 @@ const isOneTimeProductionMigration =
   process.env.VERCEL_ENV === "production" &&
   process.env.MIGRATE_MCP_SCHEMA_ONCE === "1";
 
+console.log("One-time MCP migration gate:", {
+  production: process.env.VERCEL_ENV === "production",
+  flagEnabled: process.env.MIGRATE_MCP_SCHEMA_ONCE === "1",
+});
+
 if (!isOneTimeProductionMigration) {
   console.log("Skipping the one-time MCP production migration.");
   process.exit(0);
