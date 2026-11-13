@@ -103,8 +103,9 @@ async function authorizationFailure(
   return oauthError(code, status);
 }
 
-function safeHtmlErrorResponse(message: string, status: number, hiddenFields: Record<string, string>): Response {
-  const page = renderApiKeyLoginForm("/api/mcp/oauth/authorize", hiddenFields, message);
+function safeHtmlErrorResponse(requestUrl: string, message: string, status: number, hiddenFields: Record<string, string>): Response {
+  const action = new URL("/api/mcp/oauth/authorize", getMcpPublicUrl(requestUrl).origin).toString();
+  const page = renderApiKeyLoginForm(action, hiddenFields, message);
   return new Response(page.body, { status, headers: page.headers });
 }
 
@@ -117,7 +118,8 @@ export async function GET(request: Request) {
   }
 
   const hiddenFields = { ...fields, resource: validated.resource };
-  return renderApiKeyLoginForm("/api/mcp/oauth/authorize", hiddenFields);
+  const action = new URL("/api/mcp/oauth/authorize", getMcpPublicUrl(request.url).origin).toString();
+  return renderApiKeyLoginForm(action, hiddenFields);
 }
 
 export async function POST(request: Request) {
@@ -144,14 +146,14 @@ export async function POST(request: Request) {
   const apiKeyText = formData.get("api_key") || "";
   const apiKey = apiKeyText.length <= 160 ? await findActiveApiKey(apiKeyText) : null;
   const hiddenFields = { ...fields, resource: validated.resource };
-  if (!apiKey) return safeHtmlErrorResponse("The API key is invalid or has been revoked.", 401, hiddenFields);
+  if (!apiKey) return safeHtmlErrorResponse(request.url, "The API key is invalid or has been revoked.", 401, hiddenFields);
 
   const allowedScopes = apiKey.access_level === "read_write"
     ? ["finance:read", "finance:write", "offline_access"]
     : ["finance:read", "offline_access"];
   const grantedScopes = validated.requestedScopes.filter((scope) => allowedScopes.includes(scope));
   if (!grantedScopes.includes("finance:read")) {
-    return safeHtmlErrorResponse("This key does not grant the requested access.", 403, hiddenFields);
+    return safeHtmlErrorResponse(request.url, "This key does not grant the requested access.", 403, hiddenFields);
   }
 
   try {
@@ -188,6 +190,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Failed to create MCP authorization code:", error);
-    return safeHtmlErrorResponse("Unable to authorize the connection. Try again.", 500, hiddenFields);
+    return safeHtmlErrorResponse(request.url, "Unable to authorize the connection. Try again.", 500, hiddenFields);
   }
 }

@@ -115,7 +115,9 @@ export function renderApiKeyLoginForm(
   hiddenFields: Record<string, string>,
   message = "",
 ): Response {
+  const actionUrl = new URL(action);
   const formActionHosts = [
+    actionUrl.origin,
     "https://chatgpt.com",
     "https://oauth-redirect.googleusercontent.com",
     "https://oauth-redirect-sandbox.googleusercontent.com",
@@ -125,7 +127,7 @@ export function renderApiKeyLoginForm(
     .map(([name, value]) => `<input type="hidden" name="${htmlEscape(name)}" value="${htmlEscape(value)}">`)
     .join("");
   const safeMessage = message ? `<p role="alert">${htmlEscape(message)}</p>` : "";
-  const document = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Connect Income Expense</title><style>body{font:16px system-ui,sans-serif;background:#f7f8fa;color:#202735;margin:0;min-height:100vh;display:grid;place-items:center}.card{width:min(420px,calc(100% - 32px));box-sizing:border-box;background:white;border:1px solid #e2e6eb;border-radius:16px;padding:28px}h1{font-size:22px;margin:0 0 8px}p{color:#687385;line-height:1.5}label{display:block;font-weight:600;margin:20px 0 8px}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cbd2dc;border-radius:10px;font:inherit}button{width:100%;margin-top:16px;padding:12px;border:0;border-radius:10px;background:#166b5d;color:white;font:inherit;font-weight:700;cursor:pointer}[role=alert]{color:#a33232}</style></head><body><main class="card"><h1>Connect Income Expense</h1><p>Enter the personal API key issued for your account. It grants access only to that person's financial data. Actions depend on the key's access level.</p>${safeMessage}<form method="post" action="${htmlEscape(action)}">${hiddenInputs}<label for="api_key">Personal API key</label><input id="api_key" name="api_key" type="password" autocomplete="off" required maxlength="160"><button type="submit">Authorize connection</button></form></main></body></html>`;
+  const document = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Connect Income Expense</title><style>body{font:16px system-ui,sans-serif;background:#f7f8fa;color:#202735;margin:0;min-height:100vh;display:grid;place-items:center}.card{width:min(420px,calc(100% - 32px));box-sizing:border-box;background:white;border:1px solid #e2e6eb;border-radius:16px;padding:28px}h1{font-size:22px;margin:0 0 8px}p{color:#687385;line-height:1.5}label{display:block;font-weight:600;margin:20px 0 8px}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cbd2dc;border-radius:10px;font:inherit}button{width:100%;margin-top:16px;padding:12px;border:0;border-radius:10px;background:#166b5d;color:white;font:inherit;font-weight:700;cursor:pointer}[role=alert]{color:#a33232}</style></head><body><main class="card"><h1>Connect Income Expense</h1><p>Enter the personal API key issued for your account. It grants access only to that person's financial data. Actions depend on the key's access level.</p>${safeMessage}<form method="post" action="${htmlEscape(actionUrl.toString())}">${hiddenInputs}<label for="api_key">Personal API key</label><input id="api_key" name="api_key" type="password" autocomplete="off" required maxlength="160"><button type="submit">Authorize connection</button></form></main></body></html>`;
   return new Response(document, {
     headers: noStoreHeaders({
       "Content-Type": "text/html; charset=utf-8",
